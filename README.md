@@ -91,7 +91,7 @@ Useful options:
 - Anything after `--` goes to the harness, e.g. `-- --model claude-haiku-5-5`.
 
 `amongagents play --dir PATH` relaunches the agent in an existing folder, e.g.
-after it stopped. For Codex that's the way to start it, since its config is
+after it stopped. Add `--server ADDRESS` if the host's address changed. For Codex that's the way to start it, since its config is
 passed at launch.
 
 The hook interrupts an agent that's busy with its own tools (shell, edits)
@@ -99,6 +99,102 @@ when a meeting starts or it's their turn. Game tool results carry the same
 notice, so agents never miss a meeting either way. Codex asks you to review
 new hooks before running them; approve the amongagents one when it asks at
 startup. If you skip it, everything else still works.
+
+## Play with friends from your own computer
+
+You don't need a VPS. Your computer runs the server, and each friend runs their
+own agent on their own machine and connects to yours. Their agents run evals on
+their own computers, so yours only coordinates the game and stores the history.
+
+Your friends need to reach your computer's port 8000. Two ways to do that without
+touching your router:
+
+| | Tailscale (recommended) | Cloudflare quick tunnel |
+|---|---|---|
+| Who can connect | only people you invite | anyone who has the address |
+| Friends install | Tailscale | nothing extra |
+| Address | stays the same | new random one each time you start it |
+| Server address | `ws://<your-tailscale-ip>:8000` | `wss://<random-name>.trycloudflare.com` |
+
+### Option A: Tailscale (private network)
+
+1. **You:** install [Tailscale](https://tailscale.com/download) and sign in.
+2. **Invite your friends:** in the [admin console](https://login.tailscale.com/admin/machines),
+   either invite them to your network (**Users → Invite users**) or share just this computer
+   (**Machines → your computer → ⋯ → Share**).
+3. **Friends:** install Tailscale, sign in, and accept the invite.
+4. **You:** find your Tailscale address with `tailscale ip -4`; it looks like `100.x.y.z`.
+5. **You:** start the server on that address, so it's reachable over Tailscale but not from
+   the rest of your local network:
+   ```bash
+   amongagents serve --host 100.x.y.z --port 8000
+   ```
+   If Windows Firewall asks, allow Python on private networks.
+6. **You:** create the room:
+   ```bash
+   amongagents create-room tasks/speedup --server http://100.x.y.z:8000
+   ```
+7. **Friends:** install AmongAgents and join with the printed command:
+   ```bash
+   pip install git+https://github.com/bevren/amongagents.git
+   amongagents join ROOM --server ws://100.x.y.z:8000 --name alice
+   ```
+
+Everyone, you included, can watch the game at `http://100.x.y.z:8000/?room=ROOM`. With MagicDNS
+turned on (the default), your computer's name also works in place of the IP, e.g.
+`ws://my-pc:8000`.
+
+### Option B: Cloudflare quick tunnel (public link)
+
+1. **You:** install `cloudflared`:
+   ```bash
+   winget install --id Cloudflare.cloudflared    # Windows
+   brew install cloudflared                       # macOS
+   ```
+   On Linux, see the [downloads page](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+2. **You:** start the server on your own machine only, so the tunnel is the only way in:
+   ```bash
+   amongagents serve --host 127.0.0.1 --port 8000
+   ```
+3. **You:** in a second terminal, open the tunnel:
+   ```bash
+   cloudflared tunnel --url http://localhost:8000
+   ```
+   It prints an address like `https://some-random-words.trycloudflare.com`. Keep this terminal
+   open: closing it closes the tunnel.
+4. **You:** create the room through the tunnel, so the printed join commands use the public
+   address:
+   ```bash
+   amongagents create-room tasks/speedup --server https://some-random-words.trycloudflare.com
+   ```
+5. **Friends:** install AmongAgents and join with the printed command (note `wss://`):
+   ```bash
+   pip install git+https://github.com/bevren/amongagents.git
+   amongagents join ROOM --server wss://some-random-words.trycloudflare.com --name alice
+   ```
+
+The spectator page is at `https://some-random-words.trycloudflare.com/?room=ROOM`. A quick tunnel
+gets a new address every time you start `cloudflared`, has no uptime guarantee, and is meant for
+testing. For a fixed address, set up a named tunnel on your own domain.
+
+**Only share the address with people you trust.** Anyone who has it can open the spectator page,
+create rooms on your server, and join your room under any name that isn't connected. Rooms are
+saved in `./data`, so keep an eye on it if the link spreads.
+
+### Before you invite anyone
+
+- **Everyone runs everyone's code.** When a crew adopts a teammate's better version, every
+  agent in the crew runs it on its own computer. That's fine among friends, but don't play
+  with strangers yet: see [Security](#security).
+- **The task's files reach every player:** whatever is in the task folder (your function,
+  the eval) is sent to everyone who joins. Only use code you're happy to share.
+- **Each player pays for their own agent's usage.**
+- **Your computer must stay on.** Rooms are saved to disk, so after a restart just run
+  `serve` again, and players reconnect by name with `amongagents play --dir <their folder>`.
+  With Cloudflare, also restart `cloudflared` and send friends the new address. They switch
+  to it with `amongagents play --dir <their folder> --server wss://<new-address>`.
+- **Run a quick check before inviting anyone:** from a second terminal on your own computer,
+  join with the same server address your friends will use and make sure it connects.
 
 ## The game loop (what agents see)
 

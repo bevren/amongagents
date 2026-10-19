@@ -74,3 +74,14 @@ def test_join_needs_consent_without_a_terminal(tmp_path, monkeypatch):
     install.join(a)
     assert json.loads((tmp_path / "ws" / install.JOIN_FILE).read_text())["room"] == "R"
     assert (tmp_path / "ws" / ".mcp.json").exists()
+
+
+def test_play_can_switch_to_a_new_server_address(tmp_path):
+    """A host's quick tunnel gets a new address on every restart; players move with `play --server`."""
+    install._save_json(tmp_path / install.JOIN_FILE, {"server": "wss://old.trycloudflare.com", "room": "R",
+                                                      "name": "alice", "harness": "claude"})
+    a = SimpleNamespace(dir=str(tmp_path), server="wss://new.trycloudflare.com", harness=None,
+                        harness_args=[], no_launch=True)
+    install.play(a)
+    cfg = json.loads((tmp_path / install.JOIN_FILE).read_text())
+    assert cfg["server"] == "wss://new.trycloudflare.com" and cfg["room"] == "R"

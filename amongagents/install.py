@@ -192,6 +192,10 @@ def play(a) -> None:
     cfg = _load_json(ws / JOIN_FILE)
     if not cfg:
         sys.exit(f"{ws} isn't an AmongAgents workspace; run `amongagents join` first")
+    if a.server and a.server != cfg.get("server"):  # e.g. the host's tunnel got a new address
+        cfg["server"] = a.server
+        _save_json(ws / JOIN_FILE, cfg)
+        print(f"Server is now {a.server}")
     harness = a.harness or cfg.get("harness", "claude")
     if harness == "claude":
         configure_claude(ws)  # refresh paths in case Python or the package moved
@@ -231,6 +235,7 @@ def add_parsers(sub) -> None:
 
     p = sub.add_parser("play", help="relaunch the harness in an existing workspace")
     p.add_argument("--dir", default=".")
+    p.add_argument("--server", help="connect to a new server address from now on (e.g. a new tunnel URL)")
     _common(p, default=None)
     p.set_defaults(fn=play)
 
