@@ -30,6 +30,7 @@ import json
 import os
 import re
 import shutil
+import statistics
 import subprocess
 import sys
 import threading
@@ -321,6 +322,9 @@ def main() -> None:
     ap.add_argument("--flush-min-age", type=float, default=480,
                     help="seconds a session runs at least before it can be flushed")
     ap.add_argument("--flush-every-evals", type=int, default=0, help="also restart fresh every N of an agent's evals")
+    ap.add_argument("--solo", action="store_true",
+                    help="the baseline: every agent alone in its own room (same tools and prompts, nobody to "
+                         "share ideas or code with); reports the best and the median of the solo agents")
     args = ap.parse_args()
     claude = shutil.which("claude")
     if not claude:
@@ -352,22 +356,41 @@ def main() -> None:
                            ("fork_every_sec", args.fork_every), ("noise_k", args.noise_k)):
             if value is not None:
                 task["meeting"][key] = value
-        room = http("POST", f"http://127.0.0.1:{args.port}/api/rooms", {"task": task})["room"]
-        (run_dir / "room.txt").write_text(room)
-        print(f"room {room}: watch at http://127.0.0.1:{args.port}/?room={room}", flush=True)
+        def new_room() -> str:
+            return http("POST", f"http://127.0.0.1:{args.port}/api/rooms", {"task": task})["room"]
+        rooms = {n: new_room() for n in names} if args.solo else dict.fromkeys(names, new_room())
+        (run_dir / "room.txt").write_text("\n".join(f"{n} {r}" for n, r in rooms.items()) if args.solo
+                                          else rooms[names[0]])
+        for room in dict.fromkeys(rooms.values()):
+            who = f" ({', '.join(n for n in names if rooms[n] == room)} alone)" if args.solo else ""
+            print(f"room {room}{who}: watch at http://127.0.0.1:{args.port}/?room={room}", flush=True)
         print(f"run dir: {run_dir}", flush=True)
         print(f"{len(names)} x {args.model} for {args.minutes:g} min, logs in {run_dir}", flush=True)
 
         deadline = time.time() + args.minutes * 60
         threads = []
         for n in names:  # stagger joins so the speaking order follows the name order
-            t = threading.Thread(target=run_agent, args=(n, room, args, run_dir, deadline, claude), daemon=True)
+            t = threading.Thread(target=run_agent, args=(n, rooms[n], args, run_dir, deadline, claude), daemon=True)
             t.start()
             threads.append(t)
             time.sleep(8)
         for t in threads:
             t.join()
 
+        if args.solo:
+            snaps = {n: http("GET", f"http://127.0.0.1:{args.port}/api/rooms/{rooms[n]}") for n in names}
+            (run_dir / "final_snapshot.json").write_text(json.dumps(snaps, indent=1))
+            metric = snaps[names[0]]["task"]["metric"]
+            for n, sn in snaps.items():
+                print(f"\n{n} alone: best {metric} {sn['best_score']} | {len(sn['evals'])} evals, "
+                      f"{len(sn['findings'])} findings")
+            scores = sorted((sn["best_score"] for sn in snaps.values() if sn["best_score"] is not None),
+                            reverse=snaps[names[0]]["task"]["direction"] == "maximize")
+            if scores:
+                print(f"\nsolo best of {len(scores)}: {scores[0]} | median: {statistics.median(scores)}")
+            report_spend(spend({n: run_dir / "logs" / f"{n}.jsonl" for n in names}, args.model))
+            return
+        room = rooms[names[0]]
         snap = http("GET", f"http://127.0.0.1:{args.port}/api/rooms/{room}")
         (run_dir / "final_snapshot.json").write_text(json.dumps(snap, indent=1))
         print(f"\nbest {snap['task']['metric']}: {snap['best_score']} by {snap['best_by']} | "
