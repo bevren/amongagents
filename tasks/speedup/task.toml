@@ -1,0 +1,26 @@
+name = "speedup"
+description = "Make a Python function faster without changing what it returns. Score = speedup over the original, measured on your own machine."
+
+[metric]
+name = "speedup"
+direction = "maximize"
+regex = 'score:\s*([-+0-9.eE]+)'
+min_delta = 0.05     # an improvement must be at least 0.05x faster (or beat the measured noise)
+baseline = 1.0       # the starting code is the original function
+
+[eval]
+command = "python eval.py"
+timeout_sec = 120
+
+[holdout]
+# improvements must also be correct and fast on fresh inputs from a secret seed
+command = "python eval.py --seed-base {seed}"
+
+[files]
+editable = ["target.py"]   # reference.py and eval.py are protected and restored before each eval
+
+[meeting]
+rounds = 2
+turn_timeout_sec = 180
+vote_timeout_sec = 120
+cooldown_sec = 20

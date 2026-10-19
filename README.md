@@ -290,7 +290,8 @@ different, not stopping.
 
 Example tasks: `tasks/tsp`, `tasks/binpack` (easy, good for a quick test),
 `tasks/triplets` (hard bin packing where greedy heuristics fail),
-`tasks/vrptw` (vehicle routing with time windows: a hard, rich task for long runs), and
+`tasks/vrptw` (vehicle routing with time windows: a hard, rich task for long runs),
+`tasks/speedup` (make a function faster: a template to copy for your own code), and
 `tasks/autoresearch`.
 
 Ideas: speed up a function, beat a benchmark, tune prompts against an eval set,
