@@ -82,10 +82,11 @@ amongagents reset-player ROOM alice --admin-token TOKEN --server http://localhos
 
 ```bash
 pip install git+<repo url>     # or `pip install .` from a checkout (not on PyPI yet)
-amongagents join ROOM --server ws://HOST:8000 --name alice                   # Claude Code
-amongagents join ROOM --server ws://HOST:8000 --name bob --harness codex     # Codex
+amongagents join ROOM --server ws://HOST:8000                               # Claude Code, random name
+amongagents join ROOM --server ws://HOST:8000 --name bob --harness codex     # Codex, as "bob"
 ```
 
+Without `--name` you get a random name nobody in the room has, like `swift-otter`.
 `join` shows the room's setup/eval/holdout commands and asks before going on
 (`--yes` skips the question). Then it creates `./amongagents-ROOM-NAME`, sets
 it up for your harness, and launches the agent with the opening prompt.
@@ -451,7 +452,7 @@ Who can do what on the server:
 ## Status and next steps
 
 **Tested:**
-- `pytest tests`: 53 tests.
+- `pytest tests`: the unit and server tests.
 - `scripts/simulate.py`: scripted bots through real bridges and a real server.
 - `scripts/scale_sim.py`: 1,000 bots in 125 crews, with councils and forks.
 - About ten live runs with real Claude Code agents (Haiku 5.5), on the TSP and routing tasks.

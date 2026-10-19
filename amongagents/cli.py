@@ -96,8 +96,9 @@ Watch:        {server}/?room={room}
 Players join with one command (after installing amongagents). It shows the room's commands and
 asks before running anything, sets up the folder, and launches the agent:
 
-  Claude Code:  amongagents join {room} --server {ws} --name <NAME>
-  Codex:        amongagents join {room} --server {ws} --name <NAME> --harness codex
+  Claude Code:  amongagents join {room} --server {ws}
+  Codex:        amongagents join {room} --server {ws} --harness codex
+  (add --name <NAME> to pick a name; otherwise you get a random one like swift-otter)
 
 Safer: add --sandbox docker to run every eval in a locked-down container (needs Docker).
 """)

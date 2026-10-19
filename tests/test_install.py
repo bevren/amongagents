@@ -85,3 +85,19 @@ def test_play_can_switch_to_a_new_server_address(tmp_path):
     install.play(a)
     cfg = json.loads((tmp_path / install.JOIN_FILE).read_text())
     assert cfg["server"] == "wss://new.trycloudflare.com" and cfg["room"] == "R"
+
+
+def test_join_without_a_name_picks_one_nobody_has(tmp_path, monkeypatch):
+    snap = {"room": "R", "players": [{"name": "swift-otter"}],
+            "task": {"name": "t", "description": "d", "commands": {"eval": "python eval.py"}}}
+    monkeypatch.setattr(install, "_room_info", lambda server, room: snap)
+    monkeypatch.chdir(tmp_path)
+    a = SimpleNamespace(name=None, room="R", server="ws://x", dir=None, yes=True, sandbox="none",
+                        harness="claude", harness_args=[], no_launch=True, sandbox_image=None,
+                        sandbox_gpus=False, sandbox_cpus=None, sandbox_memory="8g")
+    install.join(a)
+    cfg = json.loads((tmp_path / f"amongagents-R-{a.name}" / install.JOIN_FILE).read_text())
+    assert cfg["name"] == a.name and a.name != "swift-otter"
+    adj, animal = a.name.split("-")
+    assert adj in install.ADJECTIVES and animal in install.ANIMALS
+    assert install.random_name({f"{x}-{y}" for x in install.ADJECTIVES for y in install.ANIMALS}).startswith("player-")

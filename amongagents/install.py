@@ -1,6 +1,6 @@
 """`amongagents join`: set up a workspace for a harness and launch it, with no config editing.
 
-    amongagents join ROOM --server ws://HOST:8000 --name alice              # Claude Code
+    amongagents join ROOM --server ws://HOST:8000                           # Claude Code, random name
     amongagents join ROOM --server ws://HOST:8000 --name bob --harness codex
 
 Everything is written inside the workspace folder, never into the harness's global config:
@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,23 @@ HARNESSES = ("claude", "codex")
 # one line, no quotes or shell metacharacters: it goes through cmd.exe for Codex's npm shim on Windows
 PLAY_PROMPT = ("Call the amongagents join_room tool and follow the rules it returns. "
                "This is a long-running game: never stop on your own; there is no finish line.")
+
+
+ADJECTIVES = ("amber", "bold", "brisk", "calm", "clever", "cosmic", "crimson", "eager", "fuzzy", "gentle",
+              "golden", "jolly", "lucky", "mellow", "nimble", "quiet", "rapid", "rusty", "silver", "sly",
+              "sunny", "swift", "tidy", "witty")
+ANIMALS = ("badger", "beaver", "crane", "falcon", "ferret", "gecko", "heron", "ibis", "koala", "lemur",
+           "lynx", "marten", "moose", "newt", "otter", "owl", "panda", "puffin", "quokka", "raven",
+           "seal", "stoat", "tapir", "walrus")
+
+
+def random_name(taken: set[str]) -> str:
+    """A friendly name nobody in the room has, e.g. `swift-otter`."""
+    for _ in range(100):
+        name = f"{secrets.choice(ADJECTIVES)}-{secrets.choice(ANIMALS)}"
+        if name not in taken:
+            return name
+    return f"player-{secrets.token_hex(3)}"
 
 
 def http_base(server: str) -> str:
@@ -168,10 +186,13 @@ def _consent(snap: dict, sandbox: str, yes: bool) -> None:
 
 
 def join(a) -> None:
-    if not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", a.name):
+    if a.name and not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", a.name):
         sys.exit("--name: letters, digits, - and _ only (max 32)")
-    ws = Path(a.dir or f"amongagents-{a.room}-{a.name}").resolve()
     snap = _room_info(a.server, a.room)
+    if not a.name:
+        a.name = random_name({p["name"] for p in snap.get("players", [])})
+        print(f"Your name in this room: {a.name}")
+    ws = Path(a.dir or f"amongagents-{a.room}-{a.name}").resolve()
     _consent(snap, a.sandbox, a.yes)
     ws.mkdir(parents=True, exist_ok=True)
     cfg = {"server": a.server, "room": a.room, "name": a.name, "harness": a.harness, "trust_task": True,
@@ -221,7 +242,7 @@ def add_parsers(sub) -> None:
     j = sub.add_parser("join", help="set up a workspace for Claude Code or Codex and start playing")
     j.add_argument("room")
     j.add_argument("--server", default=os.environ.get("AMONG_SERVER", "ws://localhost:8000"))
-    j.add_argument("--name", required=True)
+    j.add_argument("--name", help="your player name (default: a random one like swift-otter)")
     j.add_argument("--dir", help="workspace folder (default: ./amongagents-ROOM-NAME)")
     _common(j)
     j.add_argument("--yes", "-y", action="store_true", help="agree to run the room's commands without asking")
