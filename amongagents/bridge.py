@@ -134,6 +134,7 @@ class Session:
             return
         url = f"{self.server}/ws/rooms/{quote(self.room)}/play?name={quote(self.name)}"
         self.ws = await websockets.connect(url, max_size=50_000_000, ping_interval=20)
+        await self.ws.send(json.dumps({"type": "hello", "token": self._load_token()}))
         while True:  # broadcasts (e.g. our own player_joined) can arrive before the welcome
             first = json.loads(await asyncio.wait_for(self.ws.recv(), 30))
             if first.get("type") in ("welcome", "fatal"):
@@ -142,9 +143,31 @@ class Session:
             await self.ws.close()
             self.ws = None
             raise RuntimeError(first["error"])
+        if first.get("token"):
+            self._save_token(first["token"])
         self._apply_welcome(first)
         self.reader = asyncio.create_task(self._read())
         self._write_session_file()
+
+    def _token_file(self) -> Path:
+        return self.ws_dir / STATE_DIR / "tokens.json"
+
+    def _load_token(self) -> str:
+        """The secret the server gave this workspace's player on first join, if any."""
+        try:
+            return json.loads(self._token_file().read_text(encoding="utf-8")).get(f"{self.room}/{self.name}", "")
+        except (OSError, ValueError):
+            return ""
+
+    def _save_token(self, token: str) -> None:
+        f = self._token_file()
+        try:
+            tokens = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            tokens = {}
+        tokens[f"{self.room}/{self.name}"] = token
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(tokens), encoding="utf-8")
 
     def _apply_welcome(self, w: dict) -> None:
         self.task = TaskSpec.from_dict(w["task"])

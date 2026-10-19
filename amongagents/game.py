@@ -156,6 +156,7 @@ class Player:
     seq: int
     connected: bool = True
     last_eval: dict | None = None
+    token_hash: str | None = None  # sha256 of the secret that proves this name is yours
 
 
 @dataclass
@@ -258,6 +259,10 @@ class Group:
                 "last_meeting_end": self.last_meeting_end, "last_progress": self.last_progress,
                 "evals_since_progress": self.evals_since_progress,
                 "queue": [[f.id, p] for f, p in self.queue] if self.level == 0 else self.queue}
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def code_fingerprint(files: dict[str, str]) -> str:
@@ -480,21 +485,34 @@ class Room:
             raise GameError(f"unknown player {name!r}; join first")
         return p
 
-    async def join(self, name: str, send: Send) -> dict:
+    async def join(self, name: str, send: Send, token: str | None = None) -> dict:
+        """Join or rejoin. A new name gets a secret token (in the welcome, once); rejoining that name
+        needs it, so nobody can take over a disconnected player. The server always passes the
+        client's token (or ""); token=None is for trusted in-process callers like tests."""
         name = name.strip()[:40]
         if not name:
             raise GameError("name required")
         assigned = False
+        issued = None
         async with self._lock:
             p = self.players.get(name)
             if p is not None:
                 if p.connected:
                     raise GameError(f"name {name!r} is already connected")
+                if token is not None and p.token_hash and not secrets.compare_digest(_hash(token), p.token_hash):
+                    raise GameError(
+                        f"name {name!r} is taken in this room. To rejoin as {name}, use the workspace you "
+                        "joined from (it keeps the player's token); otherwise pick another name, or ask "
+                        "the host to reset this player")
+                if token is not None and not p.token_hash:  # saved before tokens: the next join claims it
+                    issued = token or secrets.token_urlsafe(18)
+                    p.token_hash = _hash(issued)
                 p.send, p.connected = send, True
                 rejoined = True
             else:
                 self._seq += 1
-                p = Player(name=name, send=send, seq=self._seq)
+                issued = secrets.token_urlsafe(18)
+                p = Player(name=name, send=send, seq=self._seq, token_hash=_hash(issued))
                 self.players[name] = p
                 rejoined = False
             crew = self._crew(name) if name in self.crew_of else self._place(name)
@@ -515,7 +533,15 @@ class Room:
             if g.queue:
                 self._schedule_drain(g)
         self._persist()
-        return self.welcome(name)
+        return {**self.welcome(name), **({"token": issued} if issued else {})}
+
+    def reset_token(self, name: str) -> None:
+        """The host lets a player who lost their workspace rejoin: their next join gets a new token."""
+        p = self._player(name)
+        if p.connected:
+            raise GameError(f"{name} is connected; they can only be reset while disconnected")
+        p.token_hash = None
+        self._persist()
 
     async def leave(self, name: str) -> None:
         p = self.players.get(name)
@@ -962,7 +988,8 @@ class Room:
         """The room's current state without its growing records (those are rows in the database)."""
         return {
             "id": self.id, "created": self.created, "task": self.task.to_dict(),
-            "players": [{"name": p.name, "seq": p.seq} for p in self.players.values()], "seq": self._seq,
+            "players": [{"name": p.name, "seq": p.seq, "token_hash": p.token_hash} for p in self.players.values()],
+            "seq": self._seq,
             "best_score": self.best_score, "best_by": self.best_by, "best_crew": self.best_crew,
             "baseline_version": self.baseline_version, "version_commits": self.version_commits,
             "lines": self.lines, "last_fork": self.last_fork, "assignments": self.assignments,
@@ -976,7 +1003,8 @@ class Room:
         room = cls(state["id"], TaskSpec.from_dict(state["task"]), store)
         room.created = state["created"]
         for p in state["players"]:
-            room.players[p["name"]] = Player(name=p["name"], send=None, seq=p["seq"], connected=False)
+            room.players[p["name"]] = Player(name=p["name"], send=None, seq=p["seq"], connected=False,
+                                             token_hash=p.get("token_hash"))
         room._seq = state["seq"]
         room.best_score, room.best_by = state["best_score"], state["best_by"]
         room.best_crew, room.baseline_version = state.get("best_crew"), state["baseline_version"]

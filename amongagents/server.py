@@ -63,6 +63,11 @@ def _room(room_id: str) -> Room:
     return room
 
 
+def host_key() -> str:
+    """Set (by `amongagents serve`, or AMONG_HOST_KEY): creating a room needs it. Empty: anyone can."""
+    return os.environ.get("AMONG_HOST_KEY", "")
+
+
 def _check_admin(room_id: str, request: Request) -> None:
     token = request.headers.get("x-admin-token", "")
     if not secrets.compare_digest(token, admin_tokens.get(room_id.upper(), "")):
@@ -90,7 +95,10 @@ async def list_rooms() -> list[dict]:
 
 
 @app.post("/api/rooms")
-async def create_room(body: CreateRoom) -> dict:
+async def create_room(body: CreateRoom, request: Request) -> dict:
+    key = host_key()
+    if key and not secrets.compare_digest(request.headers.get("x-host-key", ""), key):
+        raise HTTPException(403, "creating a room needs the server's host key (see `amongagents serve`)")
     task_dict = dict(body.task)
     if body.meeting:
         task_dict["meeting"] = {**task_dict.get("meeting", {}), **body.meeting}
@@ -198,6 +206,17 @@ def _sender(ws: WebSocket):
     return send
 
 
+@app.post("/api/rooms/{room_id}/players/{name}/reset")
+async def reset_player(room_id: str, name: str, request: Request) -> dict:
+    """Admin: let a player who lost their workspace (and so their token) rejoin under their name."""
+    _check_admin(room_id, request)
+    try:
+        _room(room_id).reset_token(name)
+    except GameError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"reset": name}
+
+
 @app.websocket("/ws/rooms/{room_id}/play")
 async def play(ws: WebSocket, room_id: str, name: str) -> None:
     await ws.accept()
@@ -208,8 +227,16 @@ async def play(ws: WebSocket, room_id: str, name: str) -> None:
         await ws.close()
         return
     try:
-        welcome = await room.join(name, send)
-    except GameError as e:
+        # the token comes in a first message, not the URL, so it never shows up in access logs
+        hello = await asyncio.wait_for(ws.receive_json(), 15)
+        if not isinstance(hello, dict) or hello.get("type") != "hello":
+            raise GameError("this server needs a newer client: run `pip install -U` for amongagents")
+        welcome = await room.join(name, send, str(hello.get("token") or ""))
+    except WebSocketDisconnect:
+        return
+    except (GameError, asyncio.TimeoutError) as e:
+        if isinstance(e, asyncio.TimeoutError):
+            e = GameError("no hello from the client")
         await send({"type": "fatal", "error": str(e)})
         await ws.close()
         return
