@@ -24,7 +24,7 @@ gpus = true
 editable = ["train.py"]
 
 [meeting]
-rounds = 2
+rounds = 1
 turn_timeout_sec = 600   # an agent may be in the middle of a 5-minute training run
 vote_timeout_sec = 600
-cooldown_sec = 120
+cooldown_sec = 300

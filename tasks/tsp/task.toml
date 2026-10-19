@@ -20,7 +20,7 @@ command = "python eval.py --seed-base {seed}"
 editable = ["solver.py"]   # everything else in files/ is protected and restored before each eval
 
 [meeting]
-rounds = 2
+rounds = 1
 turn_timeout_sec = 180
 vote_timeout_sec = 120
-cooldown_sec = 20
+cooldown_sec = 300

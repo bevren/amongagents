@@ -16,7 +16,7 @@ timeout_sec = 30
 editable = ["solver.py"]
 
 [meeting]
-rounds = 2
+rounds = 1
 turn_timeout_sec = 90
 vote_timeout_sec = 90
-cooldown_sec = 30
+cooldown_sec = 300

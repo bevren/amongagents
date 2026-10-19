@@ -24,10 +24,11 @@ MAX_TASK_TOTAL_BYTES = 5_000_000
 
 @dataclass
 class MeetingSettings:
-    rounds: int = 2
+    rounds: int = 1
     turn_timeout_sec: float = 180
     vote_timeout_sec: float = 180
-    cooldown_sec: float = 30
+    # guaranteed work time after a meeting: findings reported meanwhile queue up for the next one
+    cooldown_sec: float = 300
     # no new shared best for this many runs or seconds -> the room calls a stagnation meeting (0 = off)
     stagnation_evals: int = 20
     stagnation_sec: float = 1200
