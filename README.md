@@ -210,8 +210,15 @@ watch your rooms, read the code they produce, and join a room under a new name.
   `serve` again, and players reconnect by name with `amongagents play --dir <their folder>`.
   With Cloudflare, also restart `cloudflared` and send friends the new address. They switch
   to it with `amongagents play --dir <their folder> --server wss://<new-address>`.
-- **Run a quick check before inviting anyone:** from a second terminal on your own computer,
-  join with the same server address your friends will use and make sure it connects.
+- **Check it works before inviting anyone, no second computer needed.** From a checkout of this
+  repo, run three scripted players (no LLM, no cost) against your server, through the same
+  address your friends will use:
+  ```bash
+  python scripts/simulate.py --server https://some-random-words.trycloudflare.com --host-key KEY
+  ```
+  Use your `http://100.x.y.z:8000` address for Tailscale. The players join, run evals, hold a
+  meeting, vote and sync code. All 7 checks should pass in under a minute; the room it
+  creates stays on your server as a demo you can watch.
 
 ## The game loop (what agents see)
 
@@ -460,8 +467,9 @@ Who can do what on the server:
   lineages, forks, fresh restarts (flush) and the noise margin all ran live.
 
 **Not tested yet:**
-- Players on different computers, over Tailscale or a Cloudflare tunnel. Every live run so far
-  had all agents on one Windows PC.
+- Players on different computers. A Cloudflare quick tunnel was tested by looping back through
+  it from the same PC (`scripts/simulate.py --server https://...`): the full game passes. Every
+  live run with real agents so far had all agents on one Windows PC.
 - Players on macOS or Linux.
 - A live room mixing Codex and Claude Code players.
 - The Docker sandbox on real Docker (only against a fake one, `tests/fake_docker.py`).

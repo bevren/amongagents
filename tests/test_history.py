@@ -236,3 +236,14 @@ def test_a_room_saved_as_state_json_moves_into_the_database(tmp_path):
         await restored.close()
 
     asyncio.run(main())
+
+
+def test_a_relative_data_folder_works(tmp_path, monkeypatch):
+    """`amongagents serve` stores rooms in "data", a relative path; git runs inside the repo."""
+    monkeypatch.chdir(tmp_path)
+    store = RoomStore("data", "R1")
+    store.init("R1", make_task(), {"solver.py": "v0\n"}, {})
+    sha = store.commit_experiment("exp/free/a", "v0", {"solver.py": "x\n"}, "a", "try", "")
+    assert store.files_at(sha, ["solver.py"]) == {"solver.py": "x\n"}
+    store.commit_improvement(1, {"solver.py": "x\n"}, "a", 1.0, "better", None)
+    assert [c["version"] for c in store.log()] == [1, 0]

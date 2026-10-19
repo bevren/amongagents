@@ -3,6 +3,8 @@ MCP bridges over stdio, exactly like Claude Code or Codex would.
 
     python scripts/simulate.py            # run once, verify, exit
     python scripts/simulate.py --keep     # leave the server up so you can look at the UI
+    python scripts/simulate.py --server https://xyz.trycloudflare.com --host-key KEY
+                                          # check a real server (e.g. through a tunnel) before inviting people
 
 The bot "alice" writes a 2-opt solver and beats the baseline (which becomes the shared
 baseline at once), then calls a meeting. Everyone speaks in order for two rounds,
@@ -66,17 +68,17 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
-def http(method, url, body=None):
+def http(method, url, body=None, headers=None):
     req = urllib.request.Request(url, method=method, data=json.dumps(body).encode() if body else None,
-                                 headers={"content-type": "application/json"})
-    with urllib.request.urlopen(req, timeout=10) as r:
+                                 headers={"content-type": "application/json", **(headers or {})})
+    with urllib.request.urlopen(req, timeout=30) as r:
         return json.load(r)
 
 
-async def bot(name: str, room: str, port: int, ws_dir: Path, transcript_log: list, plan: dict) -> dict:
+async def bot(name: str, room: str, ws_url: str, ws_dir: Path, transcript_log: list, plan: dict) -> dict:
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "amongagents.bridge", "--server", f"ws://127.0.0.1:{port}", "--room", room,
+        args=["-m", "amongagents.bridge", "--server", ws_url, "--room", room,
               "--name", name, "--workspace", str(ws_dir), "--trust-task"],
         cwd=str(ROOT),
     )
@@ -144,23 +146,29 @@ async def bot(name: str, room: str, port: int, ws_dir: Path, transcript_log: lis
                 "solver": (ws_dir / "solver.py").read_text()}
 
 
-async def main(keep: bool) -> None:
-    port = free_port()
+async def main(keep: bool, remote: str | None, host_key: str) -> None:
     tmp = Path(tempfile.mkdtemp(prefix="amongagents-sim-"))
-    server = subprocess.Popen([sys.executable, "-m", "uvicorn", "amongagents.server:app", "--port", str(port),
-                               "--log-level", "warning"], cwd=ROOT,
-                              env={**os.environ, "AMONG_DATA": str(tmp / "data")})
+    server = None
+    if remote:  # an existing server, e.g. yours through a tunnel, reached like a friend would
+        base = remote.rstrip("/")
+    else:
+        port = free_port()
+        base = f"http://127.0.0.1:{port}"
+        server = subprocess.Popen([sys.executable, "-m", "uvicorn", "amongagents.server:app", "--port", str(port),
+                                   "--log-level", "warning"], cwd=ROOT,
+                                  env={**os.environ, "AMONG_DATA": str(tmp / "data"), "AMONG_HOST_KEY": ""})
+    ws_url = base.replace("https://", "wss://").replace("http://", "ws://")
     try:
-        for _ in range(50):
+        for _ in range(150):
             try:
-                http("GET", f"http://127.0.0.1:{port}/api/rooms")
+                http("GET", f"{base}/api/rooms")
                 break
             except Exception:
                 time.sleep(0.2)
         task = TaskSpec.from_dir(ROOT / "tasks" / "tsp").to_dict()
         task["meeting"].update(rounds=2, turn_timeout_sec=30, vote_timeout_sec=30, cooldown_sec=0)
-        room = http("POST", f"http://127.0.0.1:{port}/api/rooms", {"task": task})["room"]
-        print(f"room {room}; watch at http://127.0.0.1:{port}/?room={room}")
+        room = http("POST", f"{base}/api/rooms", {"task": task}, {"x-host-key": host_key} if host_key else None)["room"]
+        print(f"room {room}; watch at {base}/?room={room}")
 
         order: list = []
         names = ["alice", "bob", "carol"]
@@ -173,11 +181,11 @@ async def main(keep: bool) -> None:
             "carol": {"idea": "Random restarts with the leftover time", "vote_for": "bob"},
         }
         for n in names:  # join in a fixed order: that's the speaking order
-            tasks.append(asyncio.create_task(bot(n, room, port, tmp / n, order, {**plans[n], "ready": ready})))
+            tasks.append(asyncio.create_task(bot(n, room, ws_url, tmp / n, order, {**plans[n], "ready": ready})))
             await asyncio.sleep(1.5)
         results = await asyncio.gather(*tasks)
 
-        snap = http("GET", f"http://127.0.0.1:{port}/api/rooms/{room}")
+        snap = http("GET", f"{base}/api/rooms/{room}")
         print("speaking order:", order)
         assert order == [("alice", "1"), ("bob", "1"), ("carol", "1"), ("alice", "2"), ("bob", "2"), ("carol", "2")], order
         assert snap["baseline_version"] == 1 and snap["best_score"] < 18.0, snap["best_score"]
@@ -195,8 +203,8 @@ async def main(keep: bool) -> None:
         print("WHAT THE CREW HAS TRIED" + digest[:700])
         assert "v1: 15.8591 by alice" in results[1]["history"] and "v0: starting point" in results[1]["history"]
         assert "+def solve" in results[1]["diff"] or "2-opt" in results[1]["diff"], results[1]["diff"][:500]
-        log = http("GET", f"http://127.0.0.1:{port}/api/rooms/{room}/history")
-        tsv = urllib.request.urlopen(f"http://127.0.0.1:{port}/api/rooms/{room}/results.tsv").read().decode()
+        log = http("GET", f"{base}/api/rooms/{room}/history")
+        tsv = urllib.request.urlopen(f"{base}/api/rooms/{room}/results.tsv").read().decode()
         print(f"✅ git history: {[c['title'] for c in log]}; results.tsv has {len(tsv.splitlines()) - 1} evals")
         hold = snap["findings"][0]["holdout"]
         assert hold and hold["candidate"] < hold["baseline"] and "Holdout check (seed" in log[0]["body"], (hold, log[0])
@@ -215,11 +223,12 @@ async def main(keep: bool) -> None:
         print("\n--- what alice sees after the meeting ---\n" + results[0]["meeting_over"])
         print("\n--- bob's status ---\n" + results[1]["status"])
         if keep:
-            print(f"\nServer still running: http://127.0.0.1:{port}/?room={room}  (Ctrl+C to stop)")
+            print(f"\nServer still running: {base}/?room={room}  (Ctrl+C to stop)")
             while True:
                 await asyncio.sleep(3600)
     finally:
-        server.terminate()
+        if server:
+            server.terminate()
         shutil.rmtree(tmp, ignore_errors=True)
 
 
@@ -227,7 +236,11 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # Windows consoles may not be UTF-8
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep", action="store_true")
+    ap.add_argument("--server", help="use this running server (http(s)://...) instead of starting one")
+    ap.add_argument("--host-key", default=os.environ.get("AMONG_HOST_KEY", ""),
+                    help="the server's host key (printed by `amongagents serve`)")
+    a = ap.parse_args()
     try:
-        asyncio.run(main(ap.parse_args().keep))
+        asyncio.run(main(a.keep, a.server, a.host_key))
     except KeyboardInterrupt:
         pass

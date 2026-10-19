@@ -51,7 +51,8 @@ REF = re.compile(r"^(v\d+|[0-9a-f]{7,40}|exp/[\w./-]+|crew/[\w.-]+|main)$")
 
 class RoomStore:
     def __init__(self, root: str | Path, room_id: str) -> None:
-        self.dir = Path(root) / room_id
+        # absolute: git runs inside the repo, where a relative path (like serve's default "data") breaks
+        self.dir = Path(root).resolve() / room_id
         self.repo = self.dir / "repo"
         self.db_file = self.dir / "room.db"
         self.state_file = self.dir / "state.json"  # legacy: rooms saved before the database
