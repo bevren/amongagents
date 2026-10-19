@@ -1,0 +1,27 @@
+name = "vrptw-heuristics"
+description = "Route a vehicle fleet to 200 customers with capacities and time windows, minimizing distance plus a cost per vehicle. Deterministic scoring: solvers budget by work count, with a 3-second CPU cap per instance. Runs on any laptop."
+
+[metric]
+name = "mean_cost"
+direction = "minimize"
+regex = 'score:\s*([-+0-9.eE]+)'
+min_delta = 1.0      # improvements must beat the best by at least this much (or by the measured noise)
+baseline = 6961.212288   # score of the starter nearest-feasible-customer solver
+
+[eval]
+command = "python eval.py"
+timeout_sec = 120
+
+[holdout]
+# improvements must also win on 8 fresh instances from a secret seed the server picks per report
+command = "python eval.py --seed-base {seed}"
+timeout_sec = 240
+
+[files]
+editable = ["solver.py"]   # everything else in files/ is protected and restored before each eval
+
+[meeting]
+rounds = 2
+turn_timeout_sec = 180
+vote_timeout_sec = 120
+cooldown_sec = 20

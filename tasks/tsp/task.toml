@@ -1,0 +1,26 @@
+name = "tsp-heuristics"
+description = "Find the shortest tours on fixed random TSP instances under a 2-second time limit per instance. Runs on any laptop."
+
+[metric]
+name = "mean_tour_length"
+direction = "minimize"
+regex = 'score:\s*([-+0-9.eE]+)'
+min_delta = 0.01   # improvements must beat the shared best by at least this much
+baseline = 18.845409   # score of the starter nearest-neighbor solver
+
+[eval]
+command = "python eval.py"
+timeout_sec = 120
+
+[holdout]
+# improvements must also win on 10 fresh instances from a secret seed the server picks per report
+command = "python eval.py --seed-base {seed}"
+
+[files]
+editable = ["solver.py"]   # everything else in files/ is protected and restored before each eval
+
+[meeting]
+rounds = 2
+turn_timeout_sec = 180
+vote_timeout_sec = 120
+cooldown_sec = 20

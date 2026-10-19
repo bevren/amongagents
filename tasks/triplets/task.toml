@@ -1,0 +1,26 @@
+name = "triplet-bin-packing"
+description = "Pack 5 hard bin-packing instances (360 items, capacity 1000) into the fewest bins."
+
+[metric]
+name = "mean_bins"
+direction = "minimize"
+regex = 'score:\s*([0-9.]+)'
+min_delta = 0.1     # one bin saved on one instance (0.2) counts
+baseline = 134.4    # starter first-fit solver
+
+[eval]
+command = "python eval.py"
+timeout_sec = 60
+
+[holdout]
+# improvements must also win on 5 fresh instances from a secret seed the server picks per report
+command = "python eval.py --seed-base {seed}"
+
+[files]
+editable = ["solver.py"]
+
+[meeting]
+rounds = 2
+turn_timeout_sec = 90
+vote_timeout_sec = 90
+cooldown_sec = 30

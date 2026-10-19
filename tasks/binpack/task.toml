@@ -1,0 +1,22 @@
+name = "bin-packing"
+description = "Pack 300 items into as few capacity-100 bins as possible, on 5 fixed instances. Evals take about a second."
+
+[metric]
+name = "mean_bins"
+direction = "minimize"
+regex = 'score:\s*([0-9.]+)'
+min_delta = 0.1     # saving one bin on one instance (0.2) counts as an improvement
+baseline = 155.6    # score of the starter next-fit solver
+
+[eval]
+command = "python eval.py"
+timeout_sec = 30
+
+[files]
+editable = ["solver.py"]
+
+[meeting]
+rounds = 2
+turn_timeout_sec = 90
+vote_timeout_sec = 90
+cooldown_sec = 30

@@ -1,0 +1,8 @@
+data/
+runs/
+__pycache__/
+*.egg-info/
+.amongagents/
+.pytest_cache/
+*.db-wal
+*.db-shm

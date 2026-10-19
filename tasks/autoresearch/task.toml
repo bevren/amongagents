@@ -1,0 +1,30 @@
+name = "autoresearch-nanogpt"
+description = "karpathy/autoresearch: lower val_bpb of a small GPT trained for a fixed 5 minutes. Needs one NVIDIA GPU."
+
+[metric]
+name = "val_bpb"
+direction = "minimize"
+regex = '(?m)^val_bpb:\s*([0-9.]+)'
+min_delta = 0.001
+
+[eval]
+command = "uv run train.py"
+timeout_sec = 900
+
+[setup]
+# Turns the (empty) workspace into a checkout of the repo, then does the one-time data prep.
+command = "git init -q && git remote add origin https://github.com/karpathy/autoresearch.git && git fetch -q --depth 1 origin master && git checkout -q -f FETCH_HEAD && uv sync && uv run prepare.py"
+
+[sandbox]
+# for `--sandbox docker`: an image with uv, python and git; GPUs are passed through
+image = "ghcr.io/astral-sh/uv:python3.12-bookworm"
+gpus = true
+
+[files]
+editable = ["train.py"]
+
+[meeting]
+rounds = 2
+turn_timeout_sec = 600   # an agent may be in the middle of a 5-minute training run
+vote_timeout_sec = 600
+cooldown_sec = 120

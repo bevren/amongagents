@@ -1,0 +1,32 @@
+[project]
+name = "amongagents"
+version = "0.1.0"
+description = "Multiplayer autoresearch for agent harnesses, with Among Us-style emergency meetings"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "websockets>=12",
+    "mcp>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+amongagents = "amongagents.cli:main"
+amongagents-bridge = "amongagents.bridge:main"
+amongagents-hook = "amongagents.hook:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["amongagents*"]
+
+[tool.setuptools.package-data]
+amongagents = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]  # runs/ holds agent workspaces with their own test files
