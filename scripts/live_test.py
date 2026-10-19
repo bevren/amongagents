@@ -304,8 +304,8 @@ def main() -> None:
     ap.add_argument("--port", type=int, default=8800)
     ap.add_argument("--max-sessions", type=int, default=4, help="crashed sessions per agent before it stops, counting the first session")
     ap.add_argument("--restart-backoff", type=float, default=20)
-    ap.add_argument("--rounds", type=int, default=2)
-    ap.add_argument("--cooldown", type=float, default=60)
+    ap.add_argument("--rounds", type=int, default=None, help="meeting rounds (default: task's)")
+    ap.add_argument("--cooldown", type=float, default=None, help="seconds between meetings (default: task's)")
     ap.add_argument("--turn-timeout", type=float, default=None, help="seconds per meeting turn (default: task's)")
     ap.add_argument("--stagnation-evals", type=int, default=None, help="runs without progress before a stagnation meeting")
     ap.add_argument("--crew-size", type=int, default=None, help="players per crew (default: task's, 8)")
@@ -346,7 +346,10 @@ def main() -> None:
             except Exception:
                 time.sleep(0.3)
         task = TaskSpec.from_dir(args.task).to_dict()
-        task["meeting"].update(rounds=args.rounds, cooldown_sec=args.cooldown)
+        if args.rounds is not None:
+            task["meeting"].update(rounds=args.rounds)
+        if args.cooldown is not None:
+            task["meeting"].update(cooldown_sec=args.cooldown)
         if args.turn_timeout:
             task["meeting"].update(turn_timeout_sec=args.turn_timeout, vote_timeout_sec=args.turn_timeout)
         if args.stagnation_evals is not None:
