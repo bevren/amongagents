@@ -194,6 +194,14 @@ The spectator page is at `https://some-random-words.trycloudflare.com/?room=ROOM
 gets a new address every time you start `cloudflared`, has no uptime guarantee, and is meant for
 testing. For a fixed address, set up a named tunnel on your own domain.
 
+The page shows the room live:
+- **Progress chart:** the room record, the best single run, every eval by agent, accepted wins as stars, and meetings as red bands.
+- **Activity timeline:** every run, by agent and direction, plus the best run per direction.
+- **Time split:** working vs. in meetings.
+- **Stagnation meter**, and the live meeting as a chat.
+
+Hover over any point for details. It follows your system's light or dark theme, or you can switch it in the header.
+
 **Only share the address with people you trust.** Without the host key nobody else can create
 rooms, and nobody can take over another player's name. But anyone who has the address can
 watch your rooms, read the code they produce, and join a room under a new name.
@@ -500,6 +508,5 @@ What the live runs changed:
 - **Server-side verification:** re-running a claimed improvement on a reference machine. Scores
   are self-reported today. This matters for GPU tasks, where hardware changes scores.
 - Humans typing into meetings from the web page.
-- Charts on the spectator page from the room database (e.g. best score over time).
 - Cloning a room's repo from the server (`git clone` over HTTP).
 - Rate limits, room quotas and player caps, needed before strangers can join.

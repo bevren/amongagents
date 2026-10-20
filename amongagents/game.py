@@ -383,6 +383,7 @@ class Room:
         self.evals: list[dict] = []
         self.findings: list[Finding] = []
         self.notes: list[dict] = []
+        self.meetings: list[dict] = []  # spans of finished meetings, for the spectator charts
         self.assignments: dict[str, str] = {}  # player -> idea id
         self.last_progress = time.time()  # last new shared best anywhere in the room
         self.evals_since_progress = 0
@@ -1002,7 +1003,7 @@ class Room:
             "lines": self.lines, "last_fork": self.last_fork, "assignments": self.assignments,
             "groups": [g.to_state() for g in self.groups.values()], "crew_of": self.crew_of,
             "last_progress": self.last_progress, "evals_since_progress": self.evals_since_progress,
-            "idea_seq": self._idea_seq,
+            "idea_seq": self._idea_seq, "meetings": self.meetings,
         }
 
     @classmethod
@@ -1052,6 +1053,7 @@ class Room:
             c.queue = [(by_id[fid], propose) for fid, propose in state["queue"] if fid in by_id]
             room.crew_of = {n: "C1" for n in c.members}
         room._idea_seq = state["idea_seq"]
+        room.meetings = state.get("meetings", [])
         room._holdout_samples = state.get("holdout_samples", {})
         if "lines" in state:
             room.lines = state["lines"]
@@ -1391,6 +1393,9 @@ class Room:
                 del self._busy[n]
         g.state, g.meeting = "working", None
         g.last_meeting_end = time.time()
+        self.meetings.append({"group": g.id, "level": g.level, "start": m.started, "end": g.last_meeting_end,
+                              "kind": m.finding.kind, "reporter": m.finding.reporter})
+        del self.meetings[:-300]
 
     async def _finish(self, g: Group, m: Meeting) -> None:
         self._end(g, m)
@@ -1649,6 +1654,7 @@ class Room:
                 "description": self.task.description,
                 "metric": self.task.metric_name,
                 "direction": self.task.direction,
+                "baseline_score": self.task.baseline_score,
                 "editable": self.task.editable,
                 "rounds": self.task.meeting.rounds,
                 # what joining runs on a player's machine, shown before they agree to it
@@ -1687,6 +1693,7 @@ class Room:
                      [{"idea": n["idea"], "from": n["from"], "ts": n["ts"]} for n in g.queue],
             "last_meeting": g.last_meeting,
             "decisions": self.decisions[-20:],
+            "meetings": self.meetings[-200:],
             "stagnation": {"since": stag.last_progress, "evals": stag.evals_since_progress,
                            "limit_evals": self.task.meeting.stagnation_evals,
                            "limit_sec": self.task.meeting.stagnation_sec},

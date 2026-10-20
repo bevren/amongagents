@@ -6,150 +6,703 @@
 <title>AmongAgents</title>
 <style>
 :root {
-  --bg: #f4f5f8; --panel: #ffffff; --ink: #161a23; --muted: #646b7a; --line: #e2e5ec;
-  --red: #d63b3b; --red-soft: #fde8e8; --green: #1f9d55; --green-soft: #e3f6ea;
-  --blue: #2f6fde; --blue-soft: #e6eefc; --amber: #b7791f; --amber-soft: #fdf3e1;
+  color-scheme: light;
+  --bg: #f2f4f8; --panel: #ffffff; --panel2: #f6f7fa; --ink: #131720; --muted: #636c7e; --faint: #9aa2b2;
+  --line: #e2e5ed; --grid: #eef0f4; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 20px rgba(16,24,40,.05);
+  --red: #e0363b; --red-soft: #fdeaea; --green: #11994c; --green-soft: #e2f5e9;
+  --blue: #2c67d8; --blue-soft: #e7eefc; --amber: #c27a0a; --amber-soft: #fdf2df; --violet: #6f4ee8; --violet-soft: #eee9fd;
+  --accent: #2c67d8; --tip-bg: #131720; --tip-ink: #f2f4f8;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #0f1218; --panel: #171b23; --ink: #e7e9ee; --muted: #8d95a5; --line: #262c38;
-    --red: #ff5c5c; --red-soft: #3a1c1f; --green: #3ccf7a; --green-soft: #15301f;
-    --blue: #6b9cff; --blue-soft: #18233a; --amber: #f0b44c; --amber-soft: #33281a; }
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #090c12; --panel: #11161f; --panel2: #161c27; --ink: #e7eaf0; --muted: #8e97aa; --faint: #586174;
+    --line: #212835; --grid: #19202b; --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px rgba(0,0,0,.35);
+    --red: #ff5a5f; --red-soft: rgba(255,90,95,.13); --green: #3ddc84; --green-soft: rgba(61,220,132,.12);
+    --blue: #6ea8ff; --blue-soft: rgba(110,168,255,.12); --amber: #fbbf3c; --amber-soft: rgba(251,191,60,.13);
+    --violet: #a48bff; --violet-soft: rgba(164,139,255,.13); --accent: #6ea8ff; --tip-bg: #e7eaf0; --tip-ink: #0b0e14;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #090c12; --panel: #11161f; --panel2: #161c27; --ink: #e7eaf0; --muted: #8e97aa; --faint: #586174;
+  --line: #212835; --grid: #19202b; --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px rgba(0,0,0,.35);
+  --red: #ff5a5f; --red-soft: rgba(255,90,95,.13); --green: #3ddc84; --green-soft: rgba(61,220,132,.12);
+  --blue: #6ea8ff; --blue-soft: rgba(110,168,255,.12); --amber: #fbbf3c; --amber-soft: rgba(251,191,60,.13);
+  --violet: #a48bff; --violet-soft: rgba(164,139,255,.13); --accent: #6ea8ff; --tip-bg: #e7eaf0; --tip-ink: #0b0e14;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line);
-  background: var(--panel); flex-wrap: wrap; }
-header h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
-header .sub { color: var(--muted); }
-.badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .5px; }
-.b-working { background: var(--green-soft); color: var(--green); }
-.b-meeting, .b-voting { background: var(--red-soft); color: var(--red); }
-main { display: grid; grid-template-columns: 260px 1fr 340px; gap: 16px; padding: 16px 20px; max-width: 1500px; margin: 0 auto; }
-@media (max-width: 1100px) { main { grid-template-columns: 1fr; padding: 16px; } }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; min-width: 0; }
-.card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 0 0 10px; }
-.stat { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.muted { color: var(--muted); }
-.player { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-.crew { width: 26px; height: 30px; border-radius: 13px 13px 6px 6px; position: relative; flex: none; }
-.crew::after { content: ""; position: absolute; top: 7px; right: -2px; width: 15px; height: 8px; border-radius: 6px;
-  background: #bfe6ff; border: 2px solid rgba(0,0,0,.25); }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; color: var(--ink); background: var(--bg);
+  background-image: radial-gradient(1100px 480px at 8% -8%, var(--blue-soft), transparent 62%),
+                    radial-gradient(900px 420px at 100% 0%, var(--violet-soft), transparent 60%);
+  background-attachment: fixed; min-height: 100vh;
+  font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12.5px; background: var(--panel2);
+  padding: 1px 6px; border-radius: 6px; border: 1px solid var(--line); }
+.muted { color: var(--muted); } .small { font-size: 12.5px; } .num { font-variant-numeric: tabular-nums; }
+
+/* header */
+header.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 11px 20px; border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 82%, transparent); backdrop-filter: saturate(1.4) blur(12px); }
+.brand { display: flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 800; font-size: 16.5px; letter-spacing: -.01em; }
+.brand:hover { text-decoration: none; }
+.brand svg { transform: rotate(-8deg); }
+#title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.crumb { color: var(--muted); } .crumb b { color: var(--ink); font-weight: 650; }
+.spacer { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; border: 1px solid transparent; }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.s-working { background: var(--green-soft); color: var(--green); }
+.s-meeting, .s-voting { background: var(--red-soft); color: var(--red); }
+.s-idle { background: var(--panel2); color: var(--muted); border-color: var(--line); }
+.s-meeting i, .s-voting i, .s-working.live i { animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.clock { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.icon-btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 10px;
+  width: 32px; height: 32px; cursor: pointer; font-size: 15px; display: grid; place-items: center; }
+.icon-btn:hover { border-color: var(--faint); }
+
+/* layout */
+.wrap { max-width: 1560px; margin: 0 auto; padding: 18px 20px 48px; }
+.kpis { display: grid; grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis .hero { grid-column: 1 / -1; }
+  .wrap { padding: 14px 16px 40px; }
+  header.top { padding: 10px 16px; }
+}
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 17px;
+  margin-bottom: 18px; box-shadow: var(--shadow); min-width: 0; }
+.card h2 { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--muted); margin: 0 0 12px; }
+.card h2 .right { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12.5px; }
+.card h3 { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 16px 0 8px; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 26px 10px; color: var(--muted); text-align: center; }
+.empty svg { animation: float 3.2s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-7px) rotate(6deg); } }
+
+/* KPI tiles */
+.kpi { margin: 0; position: relative; overflow: hidden; padding: 14px 16px 15px; }
+.kpi .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.kpi .value { font-size: 27px; font-weight: 780; letter-spacing: -.025em; font-variant-numeric: tabular-nums;
+  line-height: 1.15; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .sub { font-size: 12.5px; color: var(--muted); margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.kpi.hero::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--violet), var(--red)); }
+.kpi.hero .value { font-size: 34px; }
+.delta { display: inline-flex; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.delta.good { background: var(--green-soft); color: var(--green); } .delta.bad { background: var(--red-soft); color: var(--red); }
+.kbar { height: 5px; border-radius: 5px; background: var(--green-soft); overflow: hidden; margin-top: 9px; }
+.kbar i { display: block; height: 100%; background: var(--red); border-radius: 5px; }
+
+/* charts */
+svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
+svg.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.gl { stroke: var(--grid); } .axis { stroke: var(--line); }
+.band { fill: var(--red); opacity: .075; } .band-top { fill: var(--red); opacity: .5; }
+.band.live { animation: bandpulse 1.4s ease-in-out infinite alternate; }
+@keyframes bandpulse { to { opacity: .17; } }
+.dot { stroke: var(--panel); stroke-width: 1.4; cursor: pointer; transition: r .12s; }
+.dot:hover { r: 6.5; } .dot.hot { stroke: var(--ink); stroke-width: 1.6; }
+.clip { opacity: .7; cursor: pointer; }
+.fail { stroke: var(--red); stroke-width: 1.6; opacity: .55; stroke-linecap: round; }
+.hit { fill: transparent; cursor: pointer; }
+.seen { fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-dasharray: 4 4; opacity: .75; }
+.rec { fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+.star { fill: var(--amber); stroke: var(--panel); stroke-width: 1.2; cursor: pointer; filter: drop-shadow(0 0 5px var(--amber)); }
+.star:hover { transform-box: fill-box; transform-origin: center; transform: scale(1.35); }
+svg.chart text.endlabel { fill: var(--accent); font-weight: 800; font-size: 12.5px; paint-order: stroke;
+  stroke: var(--panel); stroke-width: 4px; }
+svg.chart text.lab { fill: var(--ink); font-size: 11.5px; }
+.baseline { stroke: var(--faint); stroke-dasharray: 2 5; }
+.lane { fill: var(--panel2); }
+.tick { cursor: pointer; } .tick:hover { opacity: .7; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.legend i.ln { width: 16px; height: 3px; border-radius: 2px; }
+.legend i.dash { width: 16px; height: 0; border-top: 2px dashed var(--muted); border-radius: 0; }
+.legend i.bnd { border-radius: 3px; background: var(--red); opacity: .35; }
+.dirs-legend { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.dl { display: flex; align-items: center; gap: 8px; font-size: 12.5px; min-width: 0; }
+.dl .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl .b { flex: none; font-variant-numeric: tabular-nums; color: var(--muted); }
+.dl .bar { flex: none; width: 70px; height: 6px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
+.dl .bar i { display: block; height: 100%; border-radius: 4px; }
+
+/* players */
+.player { display: flex; align-items: center; gap: 11px; padding: 8px 6px; border-radius: 12px; }
+.player + .player { border-top: 1px solid var(--line); border-radius: 0; }
 .player.off { opacity: .45; }
-.speaking { outline: 3px solid var(--red); outline-offset: 2px; }
-.order { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
-.chip { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
+.avatar { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--panel2); }
+.avatar.speaking { box-shadow: 0 0 0 2px var(--red), 0 0 16px var(--red); animation: bob .9s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-2px); } }
+.pinfo { flex: 1; min-width: 0; }
+.pname { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pstatus { flex: none; font-size: 12px; }
+.tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 650;
+  background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+.tag.bet { background: var(--violet-soft); color: var(--violet); border-color: transparent; }
+.tag.talk { background: var(--red-soft); color: var(--red); border-color: transparent; }
+.tag.ok { background: var(--green-soft); color: var(--green); border-color: transparent; }
+.iid { display: inline-flex; align-items: center; padding: 0 7px; height: 20px; border-radius: 6px; font-size: 11.5px; font-weight: 800;
+  font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--c, var(--amber)) 70%, var(--ink)); background: color-mix(in srgb, var(--c, var(--amber)) 15%, transparent); flex: none; }
+
+/* meeting */
+.meeting-card.live { border-color: color-mix(in srgb, var(--red) 55%, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 25%, transparent), 0 10px 40px color-mix(in srgb, var(--red) 14%, transparent); }
+.mhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.mtitle { font-size: 16px; font-weight: 750; letter-spacing: -.01em; }
+.timer { background: var(--panel2); color: var(--ink); border-color: var(--line); }
+#countdown:empty { display: none; }
+.order { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 0 14px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px 2px 4px; border-radius: 999px; border: 1px solid var(--line);
+  font-size: 12px; background: var(--panel); }
+.chip.plain { padding: 2px 10px; }
 .chip.now { background: var(--red); color: #fff; border-color: var(--red); }
-.msg { border-left: 3px solid var(--line); padding: 6px 10px; margin: 8px 0; white-space: pre-wrap; word-wrap: break-word; }
-.msg .who { font-weight: 600; font-size: 12px; }
-.msg.report { border-color: var(--red); background: var(--red-soft); border-radius: 0 8px 8px 0; }
-.msg.skip { color: var(--muted); font-style: italic; }
-.idea-tag { margin-top: 4px; font-size: 12px; color: var(--amber); font-weight: 600; }
-.idea { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line);
-  border-radius: 8px; margin: 6px 0; }
+.chip .cdot { width: 14px; height: 14px; border-radius: 50%; }
+.arrow { color: var(--faint); font-size: 11px; }
+.alert { padding: 9px 12px; border-radius: 10px; background: var(--red-soft); color: var(--ink); margin: 8px 0; }
+.bubbles { display: flex; flex-direction: column; gap: 10px; }
+.bubble { display: flex; gap: 10px; align-items: flex-start; }
+.bubble .bb { flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px 14px 14px 14px; padding: 8px 12px; }
+.bubble.report .bb { background: var(--red-soft); border-color: transparent; }
+.bubble .who { font-size: 12px; color: var(--muted); margin-bottom: 2px; } .bubble .who b { color: var(--ink); }
+.bubble .txt { white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
+.bubble.skip { color: var(--muted); font-style: italic; font-size: 12.5px; padding-left: 46px; }
+.idea-tag { margin-top: 6px; }
+.idea { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 12px; margin: 7px 0; }
 .idea.win { border-color: var(--green); background: var(--green-soft); }
-.iid { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--amber); flex: none; }
-.votes { font-size: 18px; font-variant-numeric: tabular-nums; flex: none; }
-.direction { border-color: var(--blue); }
-.dir-text { font-size: 15px; font-weight: 600; }
-.dir { padding: 8px 0; border-bottom: 1px solid var(--line); }
-.dir:last-child { border: 0; padding-bottom: 0; }
-.finding { padding: 8px 0; border-bottom: 1px solid var(--line); }
-.finding:last-child { border: 0; }
-.ok { color: var(--green); font-weight: 600; } .no { color: var(--red); font-weight: 600; }
-.log { font-family: ui-monospace, Consolas, monospace; font-size: 12px; max-height: 340px; overflow: auto; }
-.log div { padding: 2px 0; border-bottom: 1px dashed var(--line); }
-svg text { fill: var(--muted); font-size: 11px; }
-a { color: var(--blue); }
-table { width: 100%; border-collapse: collapse; }
-.grid { display: flex; flex-wrap: wrap; gap: 5px; }
-.cell { min-width: 44px; padding: 3px 6px; border-radius: 6px; font-size: 11px; text-align: center; cursor: pointer;
-  border: 1px solid var(--line); background: var(--green-soft); color: var(--green); text-decoration: none; }
+.idea .itext { flex: 1; min-width: 0; }
+.vbar { height: 5px; border-radius: 4px; background: var(--panel2); margin-top: 6px; overflow: hidden; }
+.vbar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.idea.win .vbar i { background: var(--green); }
+.votes { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+details summary { cursor: pointer; color: var(--muted); margin-top: 12px; }
+
+/* directions */
+.dir { padding: 11px 0; border-bottom: 1px solid var(--line); }
+.dir:first-of-type { padding-top: 2px; } .dir:last-child { border: 0; padding-bottom: 0; }
+.dir-head { display: flex; gap: 8px; align-items: baseline; }
+.dir-text { font-size: 14.5px; font-weight: 620; }
+.dir .order { margin: 7px 0 0; }
+
+/* lists */
+.finding { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.finding:last-child { border: 0; padding-bottom: 0; } .finding:first-child { padding-top: 0; }
+.frow { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.frow .when { margin-left: auto; }
+.kind { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; padding: 1px 7px; border-radius: 6px; }
+.k-improvement { background: var(--green-soft); color: var(--green); } .k-clue { background: var(--amber-soft); color: var(--amber); }
+.k-stagnation { background: var(--red-soft); color: var(--red); } .k-council { background: var(--violet-soft); color: var(--violet); }
+.score { font-weight: 750; font-variant-numeric: tabular-nums; color: var(--green); }
+.scroll { max-height: 420px; overflow: auto; margin-right: -8px; padding-right: 8px; }
+.log { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; max-height: 340px; overflow: auto; }
+.log div { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.notes { padding-left: 18px; margin: 0; } .notes li { margin: 5px 0; }
+.kv { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.kv:last-child { border: 0; } .kv b { font-variant-numeric: tabular-nums; text-align: right; }
+.meter { height: 9px; border-radius: 6px; background: var(--panel2); overflow: hidden; margin: 4px 0 8px; border: 1px solid var(--line); }
+.meter i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green), var(--amber), var(--red));
+  background-size: var(--full, 100%) 100%; }
+.split { display: flex; height: 12px; border-radius: 7px; overflow: hidden; background: var(--panel2); gap: 2px; }
+.split .w { background: var(--green); } .split .m { background: var(--red); }
+.split-legend { display: flex; justify-content: space-between; margin: 7px 0 12px; font-size: 12.5px; }
+.split-legend b { font-variant-numeric: tabular-nums; }
+.stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.stats3 div { background: var(--panel2); border-radius: 10px; padding: 8px 10px; }
+.stats3 b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+.stats3 span { font-size: 11.5px; color: var(--muted); }
+
+/* councils & crews */
+.cells { display: flex; flex-wrap: wrap; gap: 5px; }
+.cell { min-width: 46px; padding: 3px 7px; border-radius: 7px; font-size: 11px; text-align: center; cursor: pointer;
+  border: 1px solid transparent; background: var(--green-soft); color: var(--green); font-weight: 650; }
+.cell:hover { text-decoration: none; filter: brightness(1.1); }
 .cell.meeting, .cell.voting { background: var(--red-soft); color: var(--red); border-color: var(--red); }
 .cell.focus { outline: 2px solid var(--ink); outline-offset: 1px; }
-.council { padding: 6px 0; border-bottom: 1px solid var(--line); }
-.council:last-child { border: 0; }
-td, th { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
-#alarm { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column;
-  background: rgba(150, 0, 0, .82); color: #fff; z-index: 10; text-align: center; padding: 16px; }
-#alarm.show { display: flex; animation: flash .5s ease-in-out 4 alternate; }
-#alarm .big { font-size: clamp(32px, 7vw, 76px); font-weight: 900; letter-spacing: 2px; }
-@keyframes flash { from { background: rgba(150,0,0,.92); } to { background: rgba(220,40,40,.7); } }
+.council { padding: 7px 0; border-bottom: 1px solid var(--line); } .council:last-child { border: 0; }
+
+/* rooms list */
+.rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+a.room { display: block; color: var(--ink); margin: 0; transition: transform .15s, border-color .15s; }
+a.room:hover { text-decoration: none; transform: translateY(-2px); border-color: var(--accent); }
+.room-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rid { font-family: ui-monospace, Consolas, monospace; font-weight: 800; font-size: 15px; letter-spacing: .06em; }
+.room-task { font-size: 17px; font-weight: 700; margin: 8px 0 12px; }
+.room-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.room-stats span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.room-stats b { font-variant-numeric: tabular-nums; font-size: 15px; }
+
+/* tooltip + alarm */
+#tip { position: fixed; z-index: 30; pointer-events: none; max-width: 340px; padding: 8px 11px; border-radius: 10px;
+  background: var(--tip-bg); color: var(--tip-ink); font-size: 12.5px; line-height: 1.45; white-space: pre-line;
+  box-shadow: 0 10px 30px rgba(0,0,0,.3); opacity: 0; transform: translateY(4px); transition: opacity .1s, transform .1s; left: 0; top: 0; }
+#tip.show { opacity: 1; transform: none; }
+#alarm { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 40; text-align: center; padding: 16px;
+  color: #fff; background: radial-gradient(circle at 50% 45%, rgba(210,30,30,.9), rgba(70,0,0,.94) 70%); }
+#alarm.show { display: flex; animation: flash .45s ease-in-out 4 alternate; }
+#alarm .inner { animation: zoom .5s cubic-bezier(.2,1.4,.4,1); }
+#alarm .big { font-size: clamp(30px, 7vw, 80px); font-weight: 900; letter-spacing: .05em; text-shadow: 0 6px 30px rgba(0,0,0,.45); margin-top: 10px; }
+#alarm-sub { font-size: 18px; margin-top: 8px; opacity: .92; }
+@keyframes flash { to { filter: brightness(1.25); } }
+@keyframes zoom { from { transform: scale(.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<div id="alarm"><div class="big">EMERGENCY MEETING</div><div id="alarm-sub" style="font-size:18px;margin-top:10px"></div></div>
-<header>
-  <h1>🚨 AmongAgents</h1>
-  <span class="sub" id="title"></span>
+<div id="alarm"><div class="inner"><div id="alarm-mate"></div><div class="big">EMERGENCY MEETING</div><div id="alarm-sub"></div></div></div>
+<div id="tip"></div>
+<header class="top">
+  <a class="brand" href="/" id="brand">AmongAgents</a>
+  <div id="title"></div>
+  <div class="spacer"></div>
   <span id="state"></span>
+  <span class="clock" id="clock"></span>
+  <button class="icon-btn" id="theme" title="Switch theme" aria-label="Switch theme">◐</button>
 </header>
 <div id="app"></div>
 <script>
 const params = new URLSearchParams(location.search);
 const roomId = params.get("room");
 let focus = params.get("crew");  // pinned crew or council; null = follow the main storyline
-const app = document.getElementById("app");
+const app = document.getElementById("app"), tip = document.getElementById("tip");
 const COLORS = ["#c51111","#132ed1","#117f2d","#ed54ba","#ef7d0e","#f6f657","#3f474e","#d6e0f0","#6b2fbb","#71491e","#38fedb","#50ef39"];
-const color = {}; let snap = null;
+const IDEA_COLORS = ["#6ea8ff","#f5a524","#a48bff","#2fc56e","#ff6fae","#22c3c3","#ff8a3d","#8ac43f","#d86cf0","#4aa3ff"];
+const color = {}; let snap = null, gitLog = [], measuredW = 0;
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = x => x == null ? "—" : (+x).toPrecision(6).replace(/\.?0+$/, "");
+const now = () => Date.now() / 1000;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
-async function listRooms() {
-  const rooms = await (await fetch("/api/rooms")).json();
-  app.innerHTML = `<main style="grid-template-columns:1fr"><div class="card"><h2>Rooms</h2>${rooms.length ? `<table>
-    <tr><th>Room</th><th>Task</th><th>State</th><th>Players</th><th>Crews</th><th>Best</th></tr>
-    ${rooms.map(r => `<tr><td><a href="?room=${r.room}">${r.room}</a></td><td>${esc(r.task)}</td>
-      <td><span class="badge b-${r.state}">${r.state}</span></td><td>${r.players}</td><td>${r.crews ?? 1}</td><td>${fmt(r.best_score)}</td></tr>`).join("")}
-    </table>` : `<p class="muted">No rooms yet. Create one with <code>amongagents create-room tasks/tsp</code>.</p>`}</div></main>`;
+function fmtDur(sec) {
+  sec = Math.max(0, Math.round(sec));
+  if (sec < 60) return sec + "s";
+  const m = Math.floor(sec / 60);
+  if (m < 60) return m < 10 && sec % 60 ? `${m}m ${String(sec % 60).padStart(2, "0")}s` : m + "m";
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
 }
+const ago = ts => fmtDur(now() - ts) + " ago";
+const axisDur = s => s < 3600 ? Math.round(s / 60) + "m" : (s % 3600 ? `${Math.floor(s / 3600)}h${Math.round(s % 3600 / 60)}` : s / 3600 + "h");
 
 function colorOf(name) {
   if (!(name in color)) color[name] = COLORS[Object.keys(color).length % COLORS.length];
   return color[name];
 }
+function ideaColor(id) {
+  if (!id) return "var(--faint)";
+  return IDEA_COLORS[(parseInt(String(id).replace(/\D/g, ""), 10) || 0) % IDEA_COLORS.length];
+}
+const ideaChip = id => `<span class="iid" style="--c:${ideaColor(id)}">${esc(id)}</span>`;
 
-function chart(s) {
-  const pts = s.evals.filter(e => e.ok && e.score != null);
-  if (!pts.length) return `<p class="muted">No evals yet.</p>`;
-  const W = 640, H = 220, P = 56;
-  const t0 = pts[0].ts, t1 = Math.max(pts[pts.length - 1].ts, t0 + 1);
-  let lo = Math.min(...pts.map(p => p.score)), hi = Math.max(...pts.map(p => p.score));
-  if (hi === lo) { hi += 1e-9; lo -= 1e-9; }
-  const x = t => P + (t - t0) / (t1 - t0) * (W - P - 8), y = v => 8 + (hi - v) / (hi - lo) * (H - P - 8);
-  const minimize = s.task.direction === "minimize";
-  let best = null, path = "";
-  for (const p of pts) {
-    if (best == null || (minimize ? p.score < best : p.score > best)) { best = p.score; }
-    path += (path ? "L" : "M") + x(p.ts).toFixed(1) + "," + y(best).toFixed(1);
-  }
-  const dots = pts.map(p => `<circle cx="${x(p.ts)}" cy="${y(p.score)}" r="4" fill="${colorOf(p.player)}" stroke="var(--panel)" stroke-width="1.5"><title>${esc(p.player)}: ${fmt(p.score)}</title></circle>`).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="score over time">
-    <line x1="${P}" y1="${H - P + 4}" x2="${W}" y2="${H - P + 4}" stroke="var(--line)"/>
-    <text x="2" y="14">${fmt(hi)}</text><text x="2" y="${H - P}">${fmt(lo)}</text>
-    <text x="${P}" y="${H - 10}">best-ever per run (line) · each eval (dot)</text>
-    <path d="${path}" fill="none" stroke="var(--ink)" stroke-width="2" opacity=".55"/>${dots}</svg>`;
+// a crewmate: body, backpack, visor
+function mate(c, size = 28) {
+  return `<svg width="${size}" height="${Math.round(size * 1.1)}" viewBox="0 0 40 44" aria-hidden="true">
+    <rect x="4" y="17" width="8" height="16" rx="3" fill="${c}"/><rect x="4" y="17" width="8" height="16" rx="3" fill="#000" opacity=".28"/>
+    <path d="M10 14a12 12 0 0 1 24 0V36a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3v-3h-4v3a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3Z" fill="${c}" stroke="rgba(0,0,0,.4)" stroke-width="1.4"/>
+    <path d="M27 6a12 12 0 0 1 7 8V36a3 3 0 0 1-3 3h-2V14a12 12 0 0 0-2-8Z" fill="#000" opacity=".16"/>
+    <rect x="19" y="9" width="17" height="10" rx="5" fill="#a9dcf7" stroke="rgba(0,0,0,.4)" stroke-width="1.4"/>
+    <rect x="23" y="11" width="8" height="3" rx="1.5" fill="#fff" opacity=".85"/></svg>`;
+}
+// a working room with nobody online is just idle
+const statePill = (state, live) => (state = state === "working" && !live ? "idle" : state, `<span class="pill s-${esc(state)} ${live ? "live" : ""}"><i></i>${esc(state)}</span>`);
+
+// ------------------------------------------------------------------ theme + tooltip
+
+const themes = ["auto", "light", "dark"];
+function applyTheme(t) {
+  if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  document.getElementById("theme").textContent = {auto: "◐", light: "☀", dark: "☾"}[t];
+  document.getElementById("theme").title = `Theme: ${t}`;
+}
+let theme = "auto";
+try { theme = localStorage.getItem("aa-theme") || "auto"; } catch (e) {}
+applyTheme(theme);
+document.getElementById("theme").onclick = () => {
+  theme = themes[(themes.indexOf(theme) + 1) % themes.length];
+  try { localStorage.setItem("aa-theme", theme); } catch (e) {}
+  applyTheme(theme);
+};
+document.getElementById("brand").innerHTML = mate("#e0363b", 24) + "<span>AmongAgents</span>";
+document.getElementById("alarm-mate").innerHTML = mate("#ffffff", 90);
+
+function showTip(e) {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (!t) { tip.classList.remove("show"); return; }
+  tip.textContent = t.getAttribute("data-tip");
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 16;
+  if (x + r.width > innerWidth - 8) x = Math.max(8, e.clientX - r.width - 14);
+  if (y + r.height > innerHeight - 8) y = Math.max(8, e.clientY - r.height - 14);
+  tip.style.left = x + "px"; tip.style.top = y + "px"; tip.classList.add("show");
+}
+document.addEventListener("pointermove", showTip);
+document.addEventListener("pointerdown", showTip);
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+
+// ------------------------------------------------------------------ rooms list
+
+async function listRooms() {
+  document.getElementById("title").innerHTML = `<span class="crumb">Live research rooms</span>`;
+  const rooms = await (await fetch("/api/rooms")).json();
+  app.innerHTML = `<div class="wrap">${rooms.length ? `<div class="rooms">${rooms.map(r => `
+    <a class="card room" href="?room=${encodeURIComponent(r.room)}">
+      <div class="room-top"><span class="rid">${esc(r.room)}</span>${statePill(r.state, r.players > 0)}</div>
+      <div class="room-task">${esc(r.task)}</div>
+      <div class="room-stats"><div><span>best</span><b>${fmt(r.best_score)}</b></div>
+        <div><span>agents</span><b>${r.players}</b></div><div><span>crews</span><b>${r.crews ?? 1}</b></div></div>
+      <div class="muted small">${r.created ? "created " + ago(r.created) : ""}</div></a>`).join("")}</div>`
+    : `<div class="card"><div class="empty">${mate("#132ed1", 64)}<div>No rooms yet. Create one with <code>amongagents create-room tasks/tsp</code>.</div></div></div>`}</div>`;
 }
 
+// ------------------------------------------------------------------ chart helpers
+
+function chartW() {
+  if (measuredW) return measuredW;
+  const vw = Math.min(innerWidth, 1560);
+  return Math.max(280, vw > 1100 ? vw - 40 - 380 - 18 - 36 : vw - 32 - 36);
+}
+function niceTicks(lo, hi, n) {
+  const raw = (hi - lo) / n || 1, mag = 10 ** Math.floor(Math.log10(raw)), f = raw / mag;
+  const step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
+  const vals = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) vals.push(+v.toPrecision(12));
+  const dec = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+  return vals.map(v => [v, v.toFixed(Math.min(dec, 8))]);
+}
+function timeTicks(d) {
+  const span = d.t1 - d.t0;
+  const st = [60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400].find(x => span / x <= 6) || 86400;
+  const out = [];
+  for (let k = st; k <= span; k += st) out.push(k);
+  return out;
+}
+function domain(s) {
+  const evs = s.evals;
+  const truncated = evs.length >= 500;
+  const t0 = truncated ? evs[0].ts : s.created;
+  const last = Math.max(t0, ...evs.map(e => e.ts), ...(s.meetings || []).map(m => m.end), ...s.findings.map(f => f.created));
+  const live = s.players_online > 0 || !!s.meeting;
+  return {t0, t1: Math.max(live ? now() : last, t0 + 60), live};
+}
+function spans(s) {
+  const mine = m => s.crews <= 1 || m.group === s.focus;
+  const xs = (s.meetings || []).filter(mine);
+  if (s.meeting && mine(s.meeting)) {
+    xs.push({group: s.meeting.group, level: s.meeting.level, start: s.meeting.started, end: now(),
+             kind: s.meeting.finding.kind, reporter: s.meeting.finding.reporter, live: true});
+  }
+  return xs;
+}
+function meetingShare(sp, d) {
+  let total = 0, end = -Infinity;
+  for (const m of [...sp].sort((a, b) => a.start - b.start)) {
+    const a = Math.max(m.start, d.t0, end), b = Math.min(m.end, d.t1);
+    if (b > a) total += b - a;
+    end = Math.max(end, m.end);
+  }
+  return Math.min(1, total / Math.max(1, d.t1 - d.t0));
+}
+const spanTip = m => `${m.level ? "🏛 Council " + m.group : "🚨 Meeting"} · ${m.kind === "stagnation" ? "stagnation" : `${m.reporter}'s ${m.kind}`}\n${m.live ? "in progress · " : ""}${fmtDur(m.end - m.start)}`;
+function starPath(cx, cy, r) {
+  let p = "";
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI / 5 * i - Math.PI / 2, rr = i % 2 ? r * .45 : r;
+    p += (i ? "L" : "M") + (cx + rr * Math.cos(a)).toFixed(1) + "," + (cy + rr * Math.sin(a)).toFixed(1);
+  }
+  return p + "Z";
+}
+function ideaTexts(s) {
+  const t = {};
+  for (const d of s.decisions || []) t[d.idea] = d.text;
+  for (const m of [s.last_meeting, s.meeting]) for (const i of (m && m.ideas) || []) t[i.id] = i.text;
+  for (const d of s.directions) t[d.id] = d.text;
+  return t;
+}
+const better = s => (a, b) => b == null || (s.task.direction === "minimize" ? a < b : a > b);
+const bestOf = (s, xs) => xs.reduce((b, v) => better(s)(v, b) ? v : b, null);
+const evalTip = e => `${e.player}${e.idea ? " · " + e.idea : ""} · ${e.ok && e.score != null ? fmt(e.score) : "failed"}${e.beats_best ? " 🔎 beat the best" : ""}`
+  + `${e.description ? "\n" + e.description.slice(0, 160) : e.note ? "\n" + e.note : ""}\n${ago(e.ts)}`;
+
+// ------------------------------------------------------------------ progress chart
+
+function progressChart(s, d, sp) {
+  const ok = s.evals.filter(e => e.ok && e.score != null);
+  const failed = s.evals.filter(e => !(e.ok && e.score != null));
+  if (!ok.length) return `<div class="empty">${mate(colorOf((s.players[0] || {}).name || "x"), 54)}<div>Waiting for the first experiment…</div></div>`;
+  const b = better(s), base = s.task.baseline_score;
+  const W = chartW(), H = Math.round(Math.min(330, Math.max(230, W * .36))), L = 58, R = 70, T = 14, B = 38;
+  const iw = W - L - R, ih = H - T - B;
+  // the room record: accepted improvements, starting from the task's baseline
+  const wins = s.findings.filter(f => f.kind === "improvement" && f.score != null).sort((x, y) => x.created - y.created);
+  const rec = []; let cur = base ?? null;
+  if (cur != null) rec.push([d.t0, cur]);
+  for (const f of wins) if (b(f.score, cur)) { cur = f.score; rec.push([Math.max(f.created, d.t0), cur]); }
+  // the best single run so far, reported or not
+  const seen = []; let top = null;
+  for (const e of ok) if (b(e.score, top)) { top = e.score; seen.push([e.ts, top]); }
+  // a robust range: most runs, the record, and the best run; far outliers are clamped to the edge
+  const sorted = ok.map(e => e.score).sort((x, y) => x - y), q = p => sorted[Math.round(p * (sorted.length - 1))];
+  const core = [q(.05), q(.95), top, ...rec.slice(base != null ? 1 : 0).map(p => p[1])];
+  let lo = Math.min(...core), hi = Math.max(...core);
+  const span0 = hi - lo || Math.abs(hi) * .02 || 1;
+  if (base != null && base >= lo - span0 && base <= hi + span0) { lo = Math.min(lo, base); hi = Math.max(hi, base); }
+  if (hi === lo) { hi += span0 / 2; lo -= span0 / 2; }
+  const pad = (hi - lo) * .08; lo -= pad; hi += pad;
+  const X = t => L + (t - d.t0) / (d.t1 - d.t0) * iw;
+  const Y = v => Math.max(T, Math.min(T + ih, T + (hi - v) / (hi - lo) * ih));
+  const step = (pts, tEnd) => pts.map(([t, v], i) => (i ? `H${X(t).toFixed(1)}V${Y(v).toFixed(1)}` : `M${X(t).toFixed(1)},${Y(v).toFixed(1)}`)).join("") + `H${X(tEnd).toFixed(1)}`;
+
+  const grid = niceTicks(lo, hi, 5).map(([v, label]) =>
+    `<line class="gl" x1="${L}" x2="${L + iw}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 9}" y="${Y(v) + 4}" text-anchor="end">${label}</text>`).join("");
+  const xt = timeTicks(d).map(k => `<line class="axis" x1="${X(d.t0 + k)}" x2="${X(d.t0 + k)}" y1="${T + ih}" y2="${T + ih + 4}"/>
+    <text x="${X(d.t0 + k)}" y="${H - 6}" text-anchor="middle">${axisDur(k)}</text>`).join("");
+  const bands = sp.map(m => {
+    const x0 = X(Math.max(m.start, d.t0)), w = Math.max(2, X(Math.min(m.end, d.t1)) - x0);
+    return `<g data-tip="${esc(spanTip(m))}"><rect class="band ${m.live ? "live" : ""}" x="${x0}" y="${T}" width="${w}" height="${ih}"/>
+      <rect class="band-top" x="${x0}" y="${T}" width="${w}" height="3" rx="1.5"/></g>`;
+  }).join("");
+  const baseLine = base != null && base >= lo && base <= hi
+    ? `<line class="baseline" x1="${L}" x2="${L + iw}" y1="${Y(base)}" y2="${Y(base)}"/><text x="${L + 6}" y="${Y(base) - 5}">baseline ${fmt(base)}</text>` : "";
+  const dots = ok.map(e => {
+    const cx = X(e.ts), tipText = esc(evalTip(e));
+    if (e.score > hi || e.score < lo) {  // clamped: a small arrow at the edge
+      const up = e.score > hi === (Y(hi) < Y(lo)), y0 = up ? T : T + ih, dy = up ? 7 : -7;
+      return `<path class="clip" d="M${cx},${y0}L${cx - 4},${y0 + dy}L${cx + 4},${y0 + dy}Z" fill="${colorOf(e.player)}" data-tip="${tipText}"/>`;
+    }
+    return `<circle class="dot ${e.beats_best ? "hot" : ""}" cx="${cx.toFixed(1)}" cy="${Y(e.score).toFixed(1)}" r="3.7" fill="${colorOf(e.player)}" data-tip="${tipText}"/>`;
+  }).join("");
+  const fails = failed.map(e => { const x = X(e.ts), y = T + ih + 12;
+    return `<g data-tip="${esc(evalTip(e))}"><path class="fail" d="M${x - 3},${y - 3}L${x + 3},${y + 3}M${x + 3},${y - 3}L${x - 3},${y + 3}"/><rect class="hit" x="${x - 5}" y="${y - 5}" width="10" height="10"/></g>`; }).join("");
+  const stars = wins.map(f => `<path class="star" d="${starPath(X(Math.max(f.created, d.t0)), Y(f.score), 8)}"
+      data-tip="${esc(`★ ${f.reporter}'s improvement → ${fmt(f.score)}${f.crew && s.crews > 1 ? " (crew " + f.crew + ")" : ""}\n${f.summary.slice(0, 200)}\n${ago(f.created)}`)}"/>`).join("");
+  const recPath = rec.length ? step(rec, d.t1) : "";
+  const area = rec.length ? `<path d="${recPath}V${T + ih}H${X(rec[0][0])}Z" fill="url(#gA)"/>` : "";
+  const end = rec.length ? `<circle cx="${X(d.t1)}" cy="${Y(cur)}" r="4.5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>
+      <text class="endlabel" x="${X(d.t1) + 8}" y="${Y(cur) + 4}">${fmt(cur)}</text>` : "";
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="score over time">
+    <defs><linearGradient id="gA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.26"/>
+      <stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></linearGradient></defs>
+    ${grid}${bands}<line class="axis" x1="${L}" x2="${L + iw}" y1="${T + ih}" y2="${T + ih}"/>
+    <text x="${L}" y="${H - 6}" text-anchor="middle">0</text>${xt}${baseLine}${area}
+    <path class="seen" d="${step(seen, d.t1)}"/>${recPath ? `<path class="rec" d="${recPath}"/>` : ""}
+    ${dots}${fails}${stars}${end}</svg>`;
+}
+
+function progressLegend(s) {
+  const names = [...new Set(s.evals.map(e => e.player))].slice(0, 16);
+  return `<div class="legend">
+    <span><i class="ln" style="background:var(--accent)"></i>room record</span><span><i class="dash"></i>best single run</span>
+    <span><i style="background:var(--amber);border-radius:2px;transform:rotate(45deg)"></i>accepted win</span>
+    <span><i class="bnd"></i>meeting</span><span style="color:var(--red)">✕ failed run</span>
+    ${names.map(n => `<span><i style="background:${colorOf(n)}"></i>${esc(n)}</span>`).join("")}</div>`;
+}
+
+// ------------------------------------------------------------------ activity timeline
+
+function activityCard(s, d, sp, shown) {
+  if (!s.evals.length) return "";
+  const names = (shown.length ? shown.map(p => p.name) : [...new Set(s.evals.map(e => e.player))]).slice(0, 24);
+  const row = new Map(names.map((n, i) => [n, i]));
+  const W = chartW(), rowH = 26, L = 98, R = 12, T = 4, ih = names.length * rowH, H = T + ih + 22, iw = W - L - R;
+  const X = t => L + (t - d.t0) / (d.t1 - d.t0) * iw;
+  const lanes = names.map((n, i) => `<rect class="lane" x="${L}" y="${T + i * rowH + 3}" width="${iw}" height="${rowH - 6}" rx="6"/>
+      <circle cx="${8}" cy="${T + i * rowH + rowH / 2}" r="5" fill="${colorOf(n)}"/>
+      <text class="lab" x="${19}" y="${T + i * rowH + rowH / 2 + 4}">${esc(n.length > 11 ? n.slice(0, 10) + "…" : n)}</text>`).join("");
+  const bands = sp.map(m => { const x0 = X(Math.max(m.start, d.t0));
+    return `<rect class="band ${m.live ? "live" : ""}" x="${x0}" y="${T}" width="${Math.max(2, X(Math.min(m.end, d.t1)) - x0)}" height="${ih}" data-tip="${esc(spanTip(m))}"/>`; }).join("");
+  const ticks = s.evals.filter(e => row.has(e.player)).map(e => {
+    const y = T + row.get(e.player) * rowH, good = e.ok && e.score != null, hot = e.beats_best;
+    return `<rect class="tick" x="${(X(e.ts) - 1.8).toFixed(1)}" y="${y + (hot ? 4 : 7)}" width="3.6" height="${rowH - (hot ? 8 : 14)}" rx="1.8"
+      fill="${good ? ideaColor(e.idea) : "var(--red)"}" opacity="${good ? 1 : .5}" data-tip="${esc(evalTip(e))}"/>`;
+  }).join("");
+  const xt = timeTicks(d).map(k => `<text x="${X(d.t0 + k)}" y="${H - 5}" text-anchor="middle">${axisDur(k)}</text>`).join("");
+  // what each direction has produced so far
+  const texts = ideaTexts(s), by = {};
+  for (const e of s.evals) if (e.ok && e.score != null) (by[e.idea || ""] ||= []).push(e.score);
+  const record = bestOf(s, Object.values(by).flat()), worst = bestOf({task: {direction: s.task.direction === "minimize" ? "maximize" : "minimize"}},
+    Object.values(by).map(xs => bestOf(s, xs)));
+  const rows = Object.entries(by).map(([id, xs]) => ({id, n: xs.length, best: bestOf(s, xs)}))
+    .sort((x, y) => better(s)(x.best, y.best) ? -1 : 1).slice(0, 8);
+  const reach = v => worst === record ? 1 : .15 + .85 * (worst - v) / (worst - record);
+  const legend = rows.map(r => `<div class="dl">${r.id ? ideaChip(r.id) : `<span class="iid" style="--c:var(--muted)">free</span>`}
+      <span class="t" title="${esc(texts[r.id] || "")}">${esc(r.id ? texts[r.id] || "direction " + r.id : "before the first vote")}</span>
+      <span class="bar"><i style="width:${(reach(r.best) * 100).toFixed(0)}%;background:${r.id ? ideaColor(r.id) : "var(--faint)"}"></i></span>
+      <span class="b">${fmt(r.best)} · ${plural(r.n, "run")}</span></div>`).join("");
+  return `<div class="card"><h2>🛰 Activity <span class="right muted">every run, by agent and direction</span></h2>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="runs per agent over time">${lanes}${bands}${ticks}${xt}</svg>
+    <h3>Best run per direction</h3><div class="dirs-legend">${legend}</div></div>`;
+}
+
+// ------------------------------------------------------------------ side cards
+
+function kpis(s, d, sp, lineages) {
+  const total = s.players.reduce((n, p) => n + p.evals, 0);
+  const wins = s.findings.filter(f => f.kind === "improvement");
+  const base = s.task.baseline_score;
+  let delta = "";
+  if (base != null && s.best_score != null && base !== 0 && s.best_score !== base) {
+    const pct = (s.best_score - base) / Math.abs(base) * 100, good = better(s)(s.best_score, base);
+    delta = `<span class="delta ${good ? "good" : "bad"}">${pct > 0 ? "+" : "−"}${Math.abs(pct).toFixed(Math.abs(pct) < 10 ? 2 : 1)}% vs baseline</span>`;
+  }
+  const recent = s.evals.filter(e => e.ts > now() - 600).length;
+  const share = meetingShare(sp, d);
+  const failed = s.evals.filter(e => !(e.ok && e.score != null)).length;
+  const online = s.players.filter(p => p.connected).length;
+  const dirs = s.directions.length;
+  return `<div class="kpis">
+    <div class="card kpi hero"><div class="label">${lineages ? "Room record" : "Shared best"} · ${esc(s.task.metric)}</div>
+      <div class="value">${fmt(s.best_score)}</div>
+      <div class="sub">${delta}${s.best_by ? `<span>by <b>${esc(s.best_by)}</b></span>` : ""}<span>v${s.baseline_version}</span></div></div>
+    <div class="card kpi"><div class="label">Experiments</div><div class="value">${total}</div>
+      <div class="sub">${d.live ? `${(recent / 10).toFixed(1)}/min lately` : "room idle"}${failed ? ` · ${failed} failed` : ""}</div></div>
+    <div class="card kpi"><div class="label">Accepted wins</div><div class="value">${wins.length}</div>
+      <div class="sub">${wins.length ? "last " + ago(wins[wins.length - 1].created) : "none yet"}</div></div>
+    <div class="card kpi"><div class="label">Time in meetings</div><div class="value">${Math.round(share * 100)}%</div>
+      <div class="kbar"><i style="width:${(share * 100).toFixed(1)}%"></i></div></div>
+    <div class="card kpi"><div class="label">Agents online</div><div class="value">${online}<span class="muted" style="font-size:18px">/${s.players.length}</span></div>
+      <div class="sub">${s.crews > 1 ? plural(s.crews, "crew") : plural(dirs, "direction")}</div></div></div>`;
+}
+
+function crewCard(s, shown, focused) {
+  const m = s.meeting, multi = s.crews > 1;
+  const players = shown.map(p => {
+    const mine = s.evals.filter(e => e.player === p.name && e.ok && e.score != null).map(e => e.score);
+    const wins = s.findings.filter(f => f.kind === "improvement" && f.reporter === p.name).length;
+    const bet = s.directions.find(d => d.long_bet && d.long_bet.by === p.name && d.long_bet.until > now());
+    const speaking = m && m.turn === p.name;
+    const status = !p.connected ? `<span class="muted">offline</span>` : speaking ? `<span class="tag talk">🎤 speaking</span>`
+      : m && m.voted.includes(p.name) ? `<span class="tag ok">✓ voted</span>` : m && m.participants.includes(p.name) ? `<span class="tag">in meeting</span>` : "";
+    return `<div class="player ${p.connected ? "" : "off"}">
+      <div class="avatar ${speaking ? "speaking" : ""}">${mate(colorOf(p.name), 26)}</div>
+      <div class="pinfo"><div class="pname"><b>${esc(p.name)}</b>${p.idea ? ideaChip(p.idea) : ""}${bet ? `<span class="tag bet" title="long bet on ${esc(bet.id)}">🎯 long bet</span>` : ""}</div>
+        <div class="muted small">${plural(p.evals, "run")}${mine.length ? ` · best ${fmt(bestOf(s, mine))}` : ""}${wins ? ` · ★ ${wins}` : ""}${multi && m && m.level ? " · from " + esc(p.crew) : ""}</div></div>
+      <div class="pstatus">${status}</div></div>`;
+  }).join("") || `<p class="muted">${multi ? "No delegates in session." : "Nobody yet."}</p>`;
+  const label = multi ? (focused && focused.level ? "Delegates" : "Crew " + esc(s.focus)) : "Crew";
+  return `<div class="card"><h2>👩‍🚀 ${label} <span class="right muted">${shown.filter(p => p.connected).length} online</span></h2>${players}</div>`;
+}
+
+function pulseCard(s, d, sp) {
+  const share = meetingShare(sp, d), done = sp.filter(m => !m.live);
+  const lens = done.map(m => m.end - m.start), avg = lens.length ? lens.reduce((a, x) => a + x, 0) / lens.length : 0;
+  const nb = 24, w = (d.t1 - d.t0) / nb, bins = Array.from({length: nb}, () => [0, 0]);
+  for (const e of s.evals) {
+    const i = Math.min(nb - 1, Math.floor((e.ts - d.t0) / w));
+    if (i >= 0) bins[i][e.ok && e.score != null ? 0 : 1]++;
+  }
+  const peak = Math.max(1, ...bins.map(x => x[0] + x[1])), BW = 300, BH = 54, bw = BW / nb;
+  const bars = bins.map(([g, f], i) => {
+    const hg = g / peak * (BH - 4), hf = f / peak * (BH - 4);
+    return `<g data-tip="${esc(`${axisDur(i * w)}–${axisDur((i + 1) * w)}: ${plural(g + f, "run")}${f ? ` (${f} failed)` : ""}`)}">
+      <rect class="hit" x="${i * bw}" y="0" width="${bw}" height="${BH}"/>
+      <rect x="${i * bw + 1}" y="${BH - hg}" width="${bw - 2}" height="${hg}" rx="2" fill="var(--green)"/>
+      <rect x="${i * bw + 1}" y="${BH - hg - hf}" width="${bw - 2}" height="${hf}" rx="2" fill="var(--red)" opacity=".6"/></g>`;
+  }).join("");
+  return `<div class="card"><h2>💓 Pulse <span class="right muted">${fmtDur(d.t1 - d.t0)} so far</span></h2>
+    <div class="split"><div class="w" style="flex:${(1 - share).toFixed(3)}"></div><div class="m" style="flex:${share.toFixed(3)}"></div></div>
+    <div class="split-legend"><span>🛠 working <b>${Math.round((1 - share) * 100)}%</b></span><span>🚨 in meetings <b>${Math.round(share * 100)}%</b></span></div>
+    <div class="stats3"><div><b>${sp.length}</b><span>meetings</span></div><div><b>${lens.length ? fmtDur(avg) : "—"}</b><span>avg length</span></div>
+      <div><b>${s.queue ? s.queue.length : 0}</b><span>queued</span></div></div>
+    <div class="muted small" style="margin-bottom:6px">Runs over time</div>
+    <svg class="chart" viewBox="0 0 ${BW} ${BH}" preserveAspectRatio="none" style="height:${BH}px">${bars}</svg></div>`;
+}
+
+function pressureCard(s, lineages, focused) {
+  const st = s.stagnation;
+  let meter = "";
+  if (st && (st.limit_evals || st.limit_sec)) {
+    const fe = st.limit_evals ? st.evals / st.limit_evals : 0, ft = st.limit_sec ? (now() - st.since) / st.limit_sec : 0;
+    const f = Math.min(1, Math.max(fe, ft));
+    meter = `<div class="meter"><i style="width:${(f * 100).toFixed(1)}%;--full:${f > 0 ? (100 / f).toFixed(0) : 100}%"></i></div>
+      <div class="muted small" style="margin-bottom:10px">${plural(st.evals, "run")} and ${fmtDur(now() - st.since)} since the last new best.
+        A stagnation meeting comes at ${[st.limit_evals && plural(st.limit_evals, "run"), st.limit_sec && fmtDur(st.limit_sec)].filter(Boolean).join(" or ")}.</div>`;
+  }
+  const fork = s.forks && s.forks.length ? s.forks[s.forks.length - 1] : null;
+  return `<div class="card"><h2>🧨 Pressure</h2>${meter}
+    <div class="kv"><span class="muted">a win must beat the best by</span><b>${s.margin ? fmt(s.margin) : 0}</b></div>
+    ${s.noise && s.noise.sd != null ? `<div class="kv"><span class="muted">run-to-run noise</span><b>${fmt(s.noise.sd)} <span class="muted">(${s.noise.repeats} repeats)</span></b></div>` : ""}
+    ${lineages && focused && !focused.level ? `<div class="kv"><span class="muted">crew ${esc(focused.id)}'s own line</span><b>${fmt(focused.best)} <span class="muted">v${focused.version}</span></b></div>` : ""}
+    ${fork ? `<div class="kv"><span class="muted">🍴 last fork</span><b>${esc(fork.crew)} ← ${esc(fork.from)} <span class="muted">${fmt(fork.replaced.score)} → ${fmt(fork.score)}</span></b></div>` : ""}</div>`;
+}
+
+// ------------------------------------------------------------------ meetings
+
 function transcript(m) {
-  const tag = t => t.idea ? `<div class="idea-tag">💡 proposed ${t.idea}</div>` : "";
-  return m.transcript.map(t => t.round === 0 && t.kind === "nomination"
-    ? `<div class="msg report"><div class="who" style="color:${colorOf(t.player)}">🏛 ${esc(t.player)}: delegate</div>${esc(t.text)}</div>`
-    : t.round === 0
-    ? `<div class="msg report"><div class="who" style="color:${colorOf(t.player)}">📣 ${esc(t.player)}: report</div>${esc(t.text)}${tag(t)}</div>`
-    : t.skipped ? `<div class="msg skip">R${t.round} · ${esc(t.player)} was skipped (timed out)</div>`
-    : `<div class="msg" style="border-color:${colorOf(t.player)}"><div class="who">R${t.round} · ${esc(t.player)}</div>${esc(t.text)}${tag(t)}</div>`).join("");
+  const tag = t => t.idea ? `<div class="idea-tag"><span class="tag">💡 proposed ${ideaChip(t.idea)}</span></div>` : "";
+  const av = n => `<div class="avatar" style="width:34px;height:34px;border-radius:10px">${mate(colorOf(n), 22)}</div>`;
+  return `<div class="bubbles">${m.transcript.map(t => t.round === 0
+    ? `<div class="bubble report">${av(t.player)}<div class="bb"><div class="who">${t.kind === "nomination" ? "🏛 delegate" : "📣 report"} · <b>${esc(t.player)}</b></div>
+        <div class="txt">${esc(t.text)}</div>${tag(t)}</div></div>`
+    : t.skipped ? `<div class="bubble skip">⏭ ${esc(t.player)} timed out in round ${t.round}</div>`
+    : `<div class="bubble">${av(t.player)}<div class="bb"><div class="who"><b>${esc(t.player)}</b> · round ${t.round}</div>
+        <div class="txt">${esc(t.text)}</div>${tag(t)}</div></div>`).join("")}</div>`;
 }
 
 function ideas(m, tally, chosen) {
   if (!m.ideas.length) return "";
-  return `<h2 style="margin-top:14px">Ideas on the table</h2>` + m.ideas.map(i => `
-    <div class="idea ${chosen && chosen.includes(i.id) ? "win" : ""}">
-      <span class="iid">${i.id}</span>
-      <div style="flex:1;min-width:0"><div>${esc(i.text)}</div><div class="muted">by ${esc(i.by)}</div></div>
-      ${tally ? `<b class="votes">${tally[i.id] || 0}</b>` : ""}
-    </div>`).join("");
+  const peak = Math.max(1, ...Object.values(tally || {}));
+  return `<h3>Ideas on the table</h3>` + m.ideas.map(i => `
+    <div class="idea ${chosen && chosen.includes(i.id) ? "win" : ""}">${ideaChip(i.id)}
+      <div class="itext"><div>${esc(i.text)}</div><div class="muted small">by ${esc(i.by)}</div>
+        ${tally ? `<div class="vbar"><i style="width:${((tally[i.id] || 0) / peak * 100).toFixed(0)}%"></i></div>` : ""}</div>
+      ${tally ? `<b class="votes">${tally[i.id] || 0}</b>` : ""}</div>`).join("");
+}
+
+function meetingCard(s, focused, ltOpen) {
+  const m = s.meeting, multi = s.crews > 1;
+  if (m) {
+    const f = m.finding, deadline = s.state === "voting" ? m.vote_deadline : m.turn_deadline;
+    const title = m.level ? `🏛 Council ${esc(m.group)}` : `🚨 Emergency meeting${multi ? " · crew " + esc(m.group) : ""}`;
+    return `<div class="card meeting-card live">
+      <div class="mhead"><span class="mtitle">${title}</span>${statePill(s.state === "voting" ? "voting" : "meeting", true)}
+        <span class="pill timer">${s.state === "voting" ? "ballot" : `round ${m.round}/${m.rounds}`}</span>
+        <span class="pill timer" id="countdown" data-deadline="${deadline || ""}"></span></div>
+      ${f.kind === "stagnation" ? `<div class="alert"><b>🧨 Stagnation meeting:</b> progress stalled, so only brand-new ideas can win.</div>` : ""}
+      ${(m.findings || [f]).filter(x => x.kind !== "stagnation" && x.kind !== "council").map(x => `<div class="frow" style="margin:4px 0">
+        <span class="kind k-${x.kind}">${x.kind}</span><b>${esc(x.reporter)}</b>${x.score != null ? `<span class="score">${fmt(x.score)}</span>` : ""}</div>`).join("")}
+      ${s.queue && s.queue.length ? `<div class="muted small">${s.queue.length} more ${m.level ? "idea(s) waiting for this council" : "finding(s) queued for the next meeting"}</div>` : ""}
+      <div class="order">${m.participants.map(n => `<span class="chip ${m.turn === n ? "now" : ""}"><span class="cdot" style="background:${colorOf(n)}"></span>${esc(n)}${m.voted.includes(n) ? " ✓" : ""}</span>`).join(`<span class="arrow">›</span>`)}</div>
+      ${transcript(m)}${ideas(m)}</div>`;
+  }
+  if (s.last_meeting) {
+    const lm = s.last_meeting, r = lm.result, council = r.level > 0;
+    const outcome = council ? (r.decision ? `Picked ${ideaChip(r.decision.idea)} → ${plural(Object.keys(r.decision.moved).length, "new explorer")} across ${plural(r.decision.crews, "crew")}${r.decision.scope === "room" ? " (room-wide)" : ""}`
+        : r.split ? "No majority: no decision" : "No idea got a vote")
+      : r.changed ? `Crew split up across ${r.directions.map(d => ideaChip(d.id)).join(" ")}` : "No votes: directions unchanged";
+    return `<div class="card meeting-card"><h2>🗳 Last meeting <span class="right muted">${lm.started ? ago(lm.started) : ""}</span></h2>
+      <div class="mhead"><span class="mtitle">${council ? "Council " + esc(lm.group) : `${esc(lm.finding.reporter)}'s ${esc(lm.finding.kind)}`}</span></div>
+      <div>${outcome}${r.nominated ? ` · sent ${ideaChip(r.nominated.idea)} up to ${esc(r.nominated.to)}` : ""}</div>
+      ${ideas(lm, r.tally, r.directions.map(d => d.id))}
+      <details id="lt" ${ltOpen ? "open" : ""}><summary>Transcript</summary><div style="margin-top:10px">${transcript(lm)}</div></details></div>`;
+  }
+  return `<div class="card meeting-card"><h2>🗳 Meetings</h2><div class="empty">${mate("#3f474e", 44)}
+    <div>No meeting yet${multi ? " in " + esc(s.focus) : ""}. ${focused && focused.level ? "The council is waiting for ideas…" : "The crew is working…"}</div></div></div>`;
+}
+
+function directionsCard(s) {
+  const b = better(s);
+  const bestOn = id => {  // best run explored under a direction, linked to its experiment commit
+    const xs = s.evals.filter(e => e.ok && e.score != null && e.idea === id);
+    if (!xs.length) return "—";
+    const top = xs.reduce((t, e) => !t || b(e.score, t.score) ? e : t, null);
+    return top.commit ? `<a href="/api/rooms/${s.room}/diff/${top.commit}" target="_blank" title="${esc(top.description || "")}">${fmt(top.score)}</a> by ${esc(top.player)}` : fmt(top.score);
+  };
+  return `<div class="card"><h2>🧭 Directions <span class="right muted">explored in parallel${s.crews > 1 ? " · crew " + esc(s.focus) : ""}</span></h2>${s.directions.length
+    ? s.directions.map(d => {
+        const bet = d.long_bet && d.long_bet.until > now() ? d.long_bet : null;
+        return `<div class="dir"><div class="dir-head">${ideaChip(d.id)}<span class="dir-text">${esc(d.text)}</span></div>
+        <div class="muted small" style="margin-top:3px">proposed by ${esc(d.by)} · ${d.adopted ? "picked by council " + esc(d.adopted) : plural(d.votes, "vote")} · best here: ${bestOn(d.id)}</div>
+        <div class="order">${d.agents.map(a => `<span class="chip"><span class="cdot" style="background:${colorOf(a)}"></span>${esc(a)}</span>`).join("")}
+          ${bet ? `<span class="tag bet">🎯 long bet of ${esc(bet.by)} · ${fmtDur(bet.until - now())} left</span>` : ""}</div></div>`;
+      }).join("")
+    : `<div class="muted">None yet. Everyone explores freely until the first meeting's vote splits up the crew.</div>`}</div>`;
 }
 
 function setFocus(id) {
@@ -160,109 +713,86 @@ function setFocus(id) {
 
 function groupsCard(s) {
   if (!s.groups || s.crews <= 1) return "";
-  const councils = s.groups.filter(g => g.level > 0);
-  const crews = s.groups.filter(g => g.level === 0);
+  const councils = s.groups.filter(g => g.level > 0), crews = s.groups.filter(g => g.level === 0);
   const cell = g => `<a class="cell ${g.state} ${g.id === s.focus ? "focus" : ""}" onclick="setFocus('${g.id}')"
-      title="${esc(g.id)}: ${g.state}${g.topic ? " · " + esc(g.topic) : ""}${g.level ? "" : ` · best ${fmt(g.best)} (v${g.version})`}">${g.id}${g.level ? "" : `·${g.online}`}</a>`;
-  return `<div class="card"><h2>🏛 Councils & crews · ${focus ? `pinned ${esc(focus)} · <a href="#" onclick="setFocus(null);return false">follow live</a>` : "following live"}</h2>
+      data-tip="${esc(`${g.id}: ${g.state}${g.topic ? " · " + g.topic : ""}${g.level ? "" : ` · best ${fmt(g.best)} (v${g.version})`}`)}">${g.id}${g.level ? "" : `·${g.online}`}</a>`;
+  return `<div class="card"><h2>🏛 Councils & crews <span class="right muted">${focus ? `pinned ${esc(focus)} · <a href="#" onclick="setFocus(null);return false">follow live</a>` : "following live"}</span></h2>
     ${[...new Set(councils.map(g => g.level))].map(lvl => {
       const row = councils.filter(g => g.level === lvl);
-      return `<div class="council"><div class="muted">level ${lvl}${row.length === 1 && !row[0].parent ? " · top: decides room-wide" : ""}
+      return `<div class="council"><div class="muted small">level ${lvl}${row.length === 1 && !row[0].parent ? " · top: decides room-wide" : ""}
           · ${row.reduce((n, g) => n + g.queue, 0)} idea(s) waiting</div>
-        <div class="grid" style="margin-top:4px">${row.map(cell).join("")}</div>
-        ${row.filter(g => g.state !== "working").map(g => `<div class="muted">🎤 ${esc(g.id)}: ${g.state === "voting" ? "voting" : esc(g.turn || "")} · on ${esc(g.topic || "")}</div>`).join("")}</div>`;
+        <div class="cells" style="margin-top:5px">${row.map(cell).join("")}</div>
+        ${row.filter(g => g.state !== "working").map(g => `<div class="muted small">🎤 ${esc(g.id)}: ${g.state === "voting" ? "voting" : esc(g.turn || "")} · on ${esc(g.topic || "")}</div>`).join("")}</div>`;
     }).join("")}
-    <h2 style="margin-top:12px">${crews.length} crews · ${crews.filter(g => g.state !== "working").length} in a meeting</h2>
-    <div class="grid">${crews.map(cell).join("")}</div></div>`;
+    <h3>${plural(crews.length, "crew")} · ${crews.filter(g => g.state !== "working").length} in a meeting</h3>
+    <div class="cells">${crews.map(cell).join("")}</div></div>`;
 }
 
 function decisionsCard(s) {
   if (!s.decisions || !s.decisions.length) return "";
-  return `<div class="card direction"><h2>🏛 Council decisions</h2>${[...s.decisions].reverse().slice(0, 12).map(d => `<div class="dir">
-      <div style="display:flex;gap:8px;align-items:baseline"><span class="iid">${d.idea}</span><span class="dir-text">${esc(d.text)}</span></div>
-      <div class="muted">${d.scope === "room" ? "<b>room-wide</b>" : "council " + esc(d.council)} · from ${esc(d.from || "-")} · ${d.votes}/${d.voters} delegate votes · ${Object.keys(d.moved).length} new explorers</div></div>`).join("")}</div>`;
+  return `<div class="card"><h2>🏛 Council decisions</h2>${[...s.decisions].reverse().slice(0, 12).map(d => `<div class="dir">
+      <div class="dir-head">${ideaChip(d.idea)}<span class="dir-text">${esc(d.text)}</span></div>
+      <div class="muted small">${d.scope === "room" ? "<b>room-wide</b>" : "council " + esc(d.council)} · from ${esc(d.from || "-")} · ${d.votes}/${d.voters} delegate votes · ${plural(Object.keys(d.moved).length, "new explorer")}</div></div>`).join("")}</div>`;
 }
+
+function findingsCard(s) {
+  const rows = [...s.findings].reverse().slice(0, 60).map(f => `<div class="finding">
+      <div class="frow"><span class="kind k-${f.kind}">${f.kind}</span><b>${esc(f.reporter)}</b>${f.score != null ? `<span class="score">${fmt(f.score)}</span>` : ""}
+        <span class="when muted small">${ago(f.created)}</span></div>
+      <div class="muted small" style="margin-top:3px">${esc(f.summary.slice(0, 220))}${f.summary.length > 220 ? "…" : ""}</div>
+      ${f.chosen_ideas.length ? `<div class="small" style="margin-top:3px">→ next: ${f.chosen_ideas.map(ideaChip).join(" ")}</div>` : ""}</div>`).join("");
+  return `<div class="card"><h2>🔎 Findings <span class="right muted">${s.findings.length}</span></h2><div class="scroll">${rows || `<p class="muted">None yet.</p>`}</div></div>`;
+}
+
+function historyCard() {
+  if (!snap.history) return "";
+  const rows = gitLog.slice(-40).reverse().map(c => `<div class="finding">
+      <div class="frow">${c.version != null ? `<span class="iid" style="--c:var(--accent)">v${c.version}</span>` : ""}<span>${esc(c.title.replace(/^v\d+: /, ""))}</span>
+        <span class="muted small">${esc(c.short)}</span>${c.version ? `<a class="when small" href="/api/rooms/${roomId}/diff/${c.version}" target="_blank">diff</a>` : ""}</div>
+      ${c.body ? `<div class="muted small">${esc(c.body.slice(0, 160))}</div>` : ""}</div>`).join("");
+  return `<div class="card"><h2>🌿 Git history <span class="right"><a href="/api/rooms/${roomId}/results.tsv" target="_blank">results.tsv</a></span></h2>
+    <div class="scroll" style="max-height:300px">${rows || '<p class="muted">Loading…</p>'}</div></div>`;
+}
+
+// ------------------------------------------------------------------ page
 
 function render() {
   const s = snap;
-  const multi = s.crews > 1;
-  const lineages = multi && s.lineage === "crew";
+  if (!s) return;
+  tip.classList.remove("show");
+  const ltOpen = document.getElementById("lt")?.open;
+  const multi = s.crews > 1, lineages = multi && s.lineage === "crew";
   const focused = s.groups && s.groups.find(g => g.id === s.focus);
-  document.getElementById("title").textContent = `Room ${s.room} · ${s.task.name}` + (multi ? ` · ${s.players_online} online in ${s.crews} crews · showing ${s.focus}` : "");
-  document.getElementById("state").innerHTML = `<span class="badge b-${s.state}">${s.state}</span>`;
   const m = s.meeting;
+  document.getElementById("title").innerHTML = `<span class="crumb">Room <b>${esc(s.room)}</b></span><span class="crumb">·</span>
+    <span class="crumb"><b>${esc(s.task.name)}</b></span>${multi ? `<span class="crumb">· ${s.players_online} online in ${s.crews} crews · showing <b>${esc(s.focus)}</b></span>` : ""}`;
+  const d = domain(s), sp = spans(s);
+  document.getElementById("state").innerHTML = statePill(s.state, d.live);
   const shown = !multi ? s.players : s.players.filter(p => focused && focused.level === 0 ? p.crew === s.focus
       : m ? m.participants.includes(p.name) : false);
-  const players = shown.map(p => `<div class="player ${p.connected ? "" : "off"}">
-      <div class="crew ${m && m.turn === p.name ? "speaking" : ""}" style="background:${colorOf(p.name)}"></div>
-      <div><div><b>${esc(p.name)}</b>${p.idea ? ` <span class="iid">${p.idea}</span>` : ""}</div>
-      <div class="muted">${p.evals} evals${p.connected ? "" : " · offline"}${multi && m && m.level ? " · from " + esc(p.crew) : ""}</div></div></div>`).join("") || `<p class="muted">${multi ? "No delegates in session." : "Nobody yet."}</p>`;
+  const notes = s.notes.slice(-30).reverse().map(n => `<li><b>${esc(n.by)}</b>: ${esc(n.text.slice(0, 200))}</li>`).join("");
 
-  let meeting = `<div class="card"><h2>Meeting</h2><p class="muted">No meeting${multi ? " in " + esc(s.focus) : ""}. ${focused && focused.level ? "The council is waiting for ideas…" : "Crew is working…"}</p></div>`;
-  if (m) {
-    const f = m.finding;
-    const deadline = s.state === "voting" ? m.vote_deadline : m.turn_deadline;
-    meeting = `<div class="card"><h2>${m.level ? `🏛 Council ${esc(m.group)}` : `🚨 Emergency meeting${multi ? " · crew " + esc(m.group) : ""}`} · ${s.state === "voting" ? "voting" : `round ${m.round}/${m.rounds}`}
-        · <span id="countdown" data-deadline="${deadline || ""}"></span></h2>
-      ${f.kind === "stagnation" ? `<div class="msg report"><b>🧨 Stagnation meeting</b>: progress stalled, so only brand-new ideas can win.</div>` : ""}
-      ${(m.findings || [f]).filter(x => x.kind !== "stagnation" && x.kind !== "council").map(x => `<div><b style="color:${colorOf(x.reporter)}">${esc(x.reporter)}</b> reported a <b>${x.kind}</b>${x.score != null ? ` · score ${fmt(x.score)}` : ""}</div>`).join("")}
-      ${s.queue && s.queue.length ? `<div class="muted">${s.queue.length} more ${m.level ? "idea(s) waiting for this council" : "finding(s) queued for the next meeting"}</div>` : ""}
-      <div class="order">${m.participants.map(n => `<span class="chip ${m.turn === n ? "now" : ""}">${esc(n)}${m.voted.includes(n) ? " ✓" : ""}</span>`).join("→")}</div>
-      ${transcript(m)}${ideas(m)}</div>`;
-  } else if (s.last_meeting) {
-    const lastMeeting = s.last_meeting, r = lastMeeting.result;
-    const council = r.level > 0;
-    meeting = `<div class="card"><h2>Last meeting · ${council ? "council " + esc(lastMeeting.group) : `${esc(lastMeeting.finding.reporter)}'s ${lastMeeting.finding.kind}`}</h2>
-      <div>${council ? (r.decision ? `Picked <b>${r.decision.idea}</b> → ${Object.keys(r.decision.moved).length} new explorers across ${r.decision.crews} crews${r.decision.scope === "room" ? " (room-wide)" : ""}` : r.split ? "No majority: no decision" : "No idea got a vote")
-        : r.changed ? `Crew split up across <b>${r.directions.map(d => d.id).join(", ")}</b>` : "No votes: directions unchanged"}${r.nominated ? ` · sent ${r.nominated.idea} up to ${esc(r.nominated.to)}` : ""}</div>
-      ${ideas(lastMeeting, r.tally, r.directions.map(d => d.id))}
-      <details style="margin-top:10px"><summary class="muted">Transcript</summary>${transcript(lastMeeting)}</details></div>`;
-  }
-  const findings = [...s.findings].reverse().map(f => `<div class="finding">
-      <div><b style="color:${colorOf(f.reporter)}">${esc(f.reporter)}</b> · ${f.kind}${f.score != null ? ` · <span class="ok">${fmt(f.score)}</span>` : ""}</div>
-      <div class="muted">${esc(f.summary.slice(0, 220))}${f.summary.length > 220 ? "…" : ""}</div>
-      ${f.chosen_ideas.length ? `<div>→ next: ${f.chosen_ideas.join(", ")}</div>` : ""}</div>`).join("") || `<p class="muted">None yet.</p>`;
-  const better = s.task.direction === "minimize" ? Math.min : Math.max;
-  const bestOn = id => {  // best run explored under a direction, linked to its experiment commit
-    const xs = s.evals.filter(e => e.ok && e.score != null && e.idea === id);
-    if (!xs.length) return "—";
-    const top = xs.find(e => e.score === better(...xs.map(e => e.score)));
-    return top.commit ? `<a href="/api/rooms/${s.room}/diff/${top.commit}" target="_blank" title="${esc(top.description || "")}">${fmt(top.score)}</a> by ${esc(top.player)}` : fmt(top.score);
-  };
-  const directionCard = focused && focused.level ? "" : `<div class="card direction"><h2>🧭 Directions explored in parallel${multi ? " · crew " + esc(s.focus) : ""}</h2>${s.directions.length
-    ? s.directions.map(d => `<div class="dir">
-        <div style="display:flex;gap:8px;align-items:baseline"><span class="iid">${d.id}</span><span class="dir-text">${esc(d.text)}</span></div>
-        <div class="muted">proposed by ${esc(d.by)} · ${d.adopted ? "picked by council " + esc(d.adopted) : `${d.votes} vote${d.votes === 1 ? "" : "s"}`} · best here: ${bestOn(d.id)}</div>
-        <div class="order">${d.agents.map(a => `<span class="chip" style="border-color:${colorOf(a)}">${esc(a)}</span>`).join("")}</div>
-      </div>`).join("")
-    : `<div class="muted">None yet. Everyone explores freely until the first meeting's vote splits up the crew.</div>`}</div>`;
-  const notes = s.notes.map(n => `<li><b>${esc(n.by)}</b>: ${esc(n.text.slice(0, 200))}</li>`).join("");
-
-  app.innerHTML = `<main>
-    <div>
-      <div class="card"><h2>${lineages ? "Room record" : "Shared best"} · ${esc(s.task.metric)} (${s.task.direction})</h2>
-        <div class="stat">${fmt(s.best_score)}</div><div class="muted">${s.best_by ? "by " + esc(s.best_by) + " · " : ""}${lineages && s.room_best.crew ? "crew " + esc(s.room_best.crew) + " · " : ""}baseline v${s.baseline_version}</div>
-        ${lineages && focused && !focused.level ? `<div class="muted">crew ${esc(focused.id)} builds on its own line: best <b>${fmt(focused.best)}</b> (v${focused.version}${focused.best_by ? " by " + esc(focused.best_by) : ""})</div>` : ""}
-        <div class="muted">improvements must beat the best by ${s.margin ? fmt(s.margin) : 0}${s.noise && s.noise.sd != null ? ` · run-to-run noise ${fmt(s.noise.sd)} over ${s.noise.repeats} repeats` : ""}</div>
-        ${s.forks && s.forks.length ? `<div class="muted">🍴 last fork: ${esc(s.forks[s.forks.length - 1].crew)} took ${esc(s.forks[s.forks.length - 1].from)}'s code (${fmt(s.forks[s.forks.length - 1].replaced.score)} → ${fmt(s.forks[s.forks.length - 1].score)}) · ${s.forks.length} recent</div>` : ""}
-        ${s.stagnation ? `<div class="muted">${s.stagnation.evals} run${s.stagnation.evals === 1 ? "" : "s"} since the last new best${s.stagnation.limit_evals ? ` · stagnation meeting at ${s.stagnation.limit_evals}` : ""}</div>` : ""}</div>
-      <div class="card"><h2>${multi ? (focused && focused.level ? "Delegates" : "Crew " + esc(s.focus)) : "Crew"} (${shown.filter(p => p.connected).length} online)</h2>${players}</div>
-      ${groupsCard(s)}
-    </div>
-    <div>${decisionsCard(s)}${directionCard}${meeting}<div class="card"><h2>Experiments</h2>${chart(s)}</div></div>
-    <div>
+  app.innerHTML = `<div class="wrap">${kpis(s, d, sp, lineages)}
+    <div class="layout"><div>
+      <div class="card"><h2>📈 Progress <span class="right muted">${esc(s.task.metric)} · ${s.task.direction === "minimize" ? "lower is better" : "higher is better"}</span></h2>
+        <div class="chart-host">${progressChart(s, d, sp)}</div>${s.evals.length ? progressLegend(s) : ""}</div>
+      ${meetingCard(s, focused, ltOpen)}${decisionsCard(s)}${focused && focused.level ? "" : directionsCard(s)}${activityCard(s, d, sp, shown)}
+    </div><div>
+      ${crewCard(s, shown, focused)}${pulseCard(s, d, sp)}${pressureCard(s, lineages, focused)}${groupsCard(s)}
+      ${findingsCard(s)}
+      ${notes ? `<div class="card"><h2>📝 Shared notes</h2><ul class="notes scroll">${notes}</ul></div>` : ""}
       ${historyCard()}
-      <div class="card"><h2>Findings</h2>${findings}</div>
-      ${notes ? `<div class="card"><h2>Shared notes</h2><ul style="padding-left:18px;margin:0">${notes}</ul></div>` : ""}
-      <div class="card"><h2>Live log</h2><div class="log" id="log"></div></div>
-    </div></main>`;
+      <div class="card"><h2>📡 Live log</h2><div class="log" id="log"></div></div>
+    </div></div></div>`;
   renderLog();
+  const host = document.querySelector(".chart-host");
+  if (host && host.clientWidth && Math.abs(host.clientWidth - measuredW) > 6) { measuredW = host.clientWidth; render(); }
 }
 
 const logLines = [];
 function renderLog() {
   const el = document.getElementById("log");
-  if (el) el.innerHTML = logLines.slice(-150).reverse().map(l => `<div>${l}</div>`).join("");
+  if (el) el.innerHTML = logLines.slice(-150).reverse().map(l => `<div>${l}</div>`).join("") || `<span class="muted">Listening…</span>`;
 }
 function logEvent(e) {
   const t = new Date(e.ts * 1000).toLocaleTimeString();
@@ -287,22 +817,12 @@ function logEvent(e) {
 }
 
 let refreshTimer = null;
-let history = [];
 async function refresh() {
   snap = await (await fetch(`/api/rooms/${roomId}` + (focus ? `?crew=${encodeURIComponent(focus)}` : ""))).json();
   if (snap.history) {
-    try { history = await (await fetch(`/api/rooms/${roomId}/history`)).json(); } catch (e) {}
+    try { gitLog = await (await fetch(`/api/rooms/${roomId}/history`)).json(); } catch (e) {}
   }
   render();
-}
-function historyCard() {
-  if (!snap.history) return "";
-  const rows = history.map(c => `<div class="finding">
-      <div><span class="iid">${c.version != null ? "v" + c.version : ""}</span> ${esc(c.title.replace(/^v\d+: /, ""))}
-        <span class="muted">${c.short}</span>
-        ${c.version ? ` · <a href="/api/rooms/${roomId}/diff/${c.version}" target="_blank">diff</a>` : ""}</div>
-      ${c.body ? `<div class="muted">${esc(c.body.slice(0, 160))}</div>` : ""}</div>`).join("");
-  return `<div class="card"><h2>Git history · <a href="/api/rooms/${roomId}/results.tsv" target="_blank">results.tsv</a></h2>${rows || '<p class="muted">Loading…</p>'}</div>`;
 }
 // throttled, not debounced: a big room never goes quiet long enough for a debounce to fire
 function scheduleRefresh() {
@@ -313,7 +833,7 @@ function connect() {
   const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/rooms/${roomId}/watch`);
   ws.onmessage = ev => {
     const e = JSON.parse(ev.data);
-    if (e.type === "fatal") { app.innerHTML = `<main><div class="card">${esc(e.error)}</div></main>`; return; }
+    if (e.type === "fatal") { app.innerHTML = `<div class="wrap"><div class="card"><div class="empty">${mate("#3f474e", 54)}<div>${esc(e.error)}</div><a href="/">All rooms</a></div></div></div>`; return; }
     if (e.type === "snapshot") { snap = e.snapshot; snap.players.forEach(p => colorOf(p.name)); render(); refresh(); return; }
     logEvent(e);
     if (e.type === "meeting_started" && (!snap || snap.crews <= 1 || e.meeting.group === focus)) {
@@ -330,10 +850,15 @@ function connect() {
 
 setInterval(() => {
   const el = document.getElementById("countdown");
-  if (el && el.dataset.deadline) el.textContent = Math.max(0, Math.round(el.dataset.deadline - Date.now() / 1000)) + "s left";
+  if (el && el.dataset.deadline) el.textContent = "⏱ " + Math.max(0, Math.round(el.dataset.deadline - now())) + "s";
+  const c = document.getElementById("clock");
+  if (c && snap) c.textContent = (snap.players_online > 0 || snap.meeting) ? "⏱ " + fmtDur(now() - snap.created) : "";
 }, 500);
+setInterval(() => { if (snap && !document.hidden && !refreshTimer) render(); }, 20000);  // keep the time axis moving
+let resizeTimer = null;
+addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { measuredW = 0; render(); }, 150); });
 
-if (roomId) connect(); else listRooms();
+if (roomId) connect(); else { listRooms(); setInterval(listRooms, 5000); }
 </script>
 </body>
 </html>
