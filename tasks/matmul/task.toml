@@ -1,0 +1,25 @@
+name = "matmul-exponent"
+description = "Find bilinear algorithms for small matrix multiplications. A rank-r algorithm for n x m times m x p proves omega <= 3 ln r / ln(nmp); lower is better. Exact checks, deterministic scores, runs on any laptop."
+
+[metric]
+name = "omega_bound"
+direction = "minimize"
+regex = 'score:\s*([-+0-9.eE]+)'
+min_delta = 0.0001   # scores are exact: one multiplication fewer always counts
+baseline = 3.0       # the schoolbook 2 x 2 algorithm, 8 multiplications
+
+[eval]
+command = "python eval.py"
+timeout_sec = 120
+
+# No holdout: there are no instances to overfit, and every eval checks correctness
+# modulo primes it draws at random, so a wrong algorithm can't be tuned to pass.
+
+[files]
+editable = ["decomposition.py"]   # eval.py is protected and restored before each eval
+
+[meeting]
+rounds = 1
+turn_timeout_sec = 180
+vote_timeout_sec = 120
+cooldown_sec = 300
