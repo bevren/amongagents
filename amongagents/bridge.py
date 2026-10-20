@@ -483,10 +483,10 @@ class Session:
             f"--sandbox docker is on, but Docker isn't usable here ({detail[:200]}). Install and start Docker "
             "(plus the NVIDIA container toolkit for GPU tasks), or ask your human to restart without --sandbox.")
 
-    async def holdout_check(self) -> dict:
+    async def holdout_check(self, files: dict[str, str]) -> dict:
         """Run the task's holdout eval with a one-time secret seed from the server, on our candidate
-        and on the shared baseline (in a temporary copy of the workspace), so both are compared on the
-        same fresh instances."""
+        `files` and on the shared baseline (each in a temporary copy of the workspace), so both are
+        compared on the same fresh instances."""
         assert self.task
         problem = await self.check_sandbox()
         if problem:
@@ -495,24 +495,27 @@ class Session:
         baseline = await self.request("baseline")
         cmd = self.task.holdout_command.replace("{seed}", str(challenge["seed"]))
         timeout = self.task.holdout_timeout_sec
-        self.restore_protected()
-        code, out = await self._run(cmd, timeout)
-        candidate = parse_metric(self.task.metric_regex, out) if code == 0 else None
+        candidate, out = await self._run_copy(cmd, timeout, files)
+        base, out_b = await self._run_copy(cmd, timeout, baseline["files"])
+        return {"seed": challenge["seed"], "baseline_version": challenge["baseline_version"],
+                "candidate": candidate, "baseline": base,
+                "candidate_output": out[-800:], "baseline_output": out_b[-800:]}
+
+    async def _run_copy(self, cmd: str, timeout: float, files: dict[str, str]) -> tuple[float | None, str]:
+        """Run cmd in a temporary copy of the workspace with these editable files and pristine
+        protected ones; returns (metric or None, output)."""
         tmp = Path(tempfile.mkdtemp(prefix="amongagents-holdout-"))
         try:
             copy = tmp / "ws"
             shutil.copytree(self.ws_dir, copy, ignore=shutil.ignore_patterns(STATE_DIR, ".git", "__pycache__"))
-            for rel, content in {**self.task.files, **baseline["files"]}.items():
-                if rel in self.task.protected_files or rel in baseline["files"]:
+            for rel, content in {**self.task.files, **files}.items():
+                if rel in self.task.protected_files or rel in files:
                     (copy / rel).parent.mkdir(parents=True, exist_ok=True)
                     (copy / rel).write_text(content, encoding="utf-8")
-            code_b, out_b = await self._run(cmd, timeout, cwd=copy)
+            code, out = await self._run(cmd, timeout, cwd=copy)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
-        base = parse_metric(self.task.metric_regex, out_b) if code_b == 0 else None
-        return {"seed": challenge["seed"], "baseline_version": challenge["baseline_version"],
-                "candidate": candidate, "baseline": base,
-                "candidate_output": out[-800:], "baseline_output": out_b[-800:]}
+        return (parse_metric(self.task.metric_regex, out) if code == 0 else None), out
 
     async def eval_job(self, description: str = "") -> dict:
         assert self.task
@@ -528,7 +531,7 @@ class Session:
             (self.ws_dir / STATE_DIR / "setup_done").write_text("ok")
             self.setup_done = True
         self.restore_protected()
-        files_hash = self.editable_hash()
+        files_hash, files = self.editable_hash(), self.read_editable()  # what this run scores
         started = time.time()
         code, out = await self._run(self.task.eval_command, self.task.eval_timeout_sec)
         output += out
@@ -536,11 +539,11 @@ class Session:
         ok = code == 0 and score is not None
         error = None if ok else ("timeout" if code is None else f"exit {code}" if code else "metric not found in output")
         result = {"ok": ok, "score": score, "error": error, "output": output,
-                  "files_hash": files_hash, "seconds": round(time.time() - started, 1)}
+                  "files_hash": files_hash, "files": files, "seconds": round(time.time() - started, 1)}
         try:
             # the files go along so the server can commit this run on our experiment branch
             entry = await self.request("eval", score=score, ok=ok, note=error or "", description=description,
-                                       files=self.read_editable(), based_on=self.synced_version)
+                                       files=files, based_on=self.synced_version)
             result["beats_best"] = entry["beats_best"]
             result["commit"], result["branch"] = entry.get("commit"), entry.get("branch")
         except Exception as e:
@@ -714,45 +717,53 @@ async def eval_status(wait_sec: float = 45) -> str:
 @mcp.tool()
 async def report_finding(kind: str, summary: str, propose: str | None = None) -> str:
     """Call an EMERGENCY MEETING about a finding.
-    kind='improvement': your last eval beat the shared best. Your editable files become the shared
-    baseline immediately, since the score proves it. If the task has a holdout check, this first runs
+    kind='improvement': your last eval beat the shared best. The files that eval scored become the shared
+    baseline immediately, since the score proves it (edits you made after it stay in your workspace). If the task has a holdout check, this first runs
     your solver and the baseline on fresh hidden instances, and only accepts a win there too.
     kind='clue': a useful insight without a better score (a dead end, a bug, a surprising result).
     The summary is your opening presentation: what you changed, the evidence, and what it tells us.
     propose: optional one-line idea worth exploring next (others can vote for it)."""
     await S.ensure()
-    score, files = None, None
+    score, files, edited = None, None, False
     if kind == "improvement":
         r = S.last_eval
         if not r or not r["ok"]:
             raise RuntimeError("no successful eval to report; call run_eval first")
         if S.job and not S.job.done():
             raise RuntimeError("an eval is still running; wait for it to finish")
-        if S.editable_hash() != r["files_hash"]:
-            raise RuntimeError("editable files changed since your last eval; re-run run_eval so the score matches")
-        score, files = r["score"], S.read_editable()
-    holdout = None
-    if kind == "improvement" and S.task.holdout_command:
-        if not S.trust:
+        # the files that eval scored, even if you've edited since: a win isn't lost to a later edit
+        score, files = r["score"], r["files"]
+        edited = S.editable_hash() != r["files_hash"]
+        if S.task.holdout_command and not S.trust:
             raise RuntimeError("this task checks improvements on hidden instances, which needs --trust-task")
-        h = await S.holdout_check()
-        holdout = {k: h[k] for k in ("seed", "baseline_version", "candidate", "baseline")}
-        if h["candidate"] is None:
-            raise RuntimeError("your solver failed on the hidden instances:\n" + h["candidate_output"])
-    f = await S.request("report", kind=kind, summary=summary, score=score, files=files, propose=propose,
-                        holdout=holdout)
-    if kind == "improvement":  # our files *are* the new baseline (its event arrives before this reply)
+    for attempt in range(3):
+        holdout = None
+        if kind == "improvement" and S.task.holdout_command:
+            h = await S.holdout_check(files)
+            holdout = {k: h[k] for k in ("seed", "baseline_version", "candidate", "baseline")}
+            if h["candidate"] is None:
+                raise RuntimeError("your solver failed on the hidden instances:\n" + h["candidate_output"])
+        try:
+            f = await S.request("report", kind=kind, summary=summary, score=score, files=files, propose=propose,
+                                holdout=holdout)
+            break
+        except Exception as e:  # another win landed mid-check: check again against the new baseline
+            if "baseline changed during your holdout check" not in str(e) or attempt == 2:
+                raise
+    if kind == "improvement" and not edited:  # our files *are* the new baseline (its event arrives first)
         S.mark_synced(S.baseline["version"])
+    note = (" You had edited your files since that eval: the eval's files were reported, and your edits are "
+            "untouched (`sync_baseline` would replace them, after a backup)." if edited else "")
     if f.get("queued"):
         return _with_notice(
             "Finding recorded and QUEUED: a meeting is running or the room is in cooldown. It will open the "
             "next meeting automatically, so don't report it again. "
-            + ("Your files are already the new shared baseline. " if kind == "improvement" else "")
+            + (f"Your eval's files are already the new shared baseline.{note} " if kind == "improvement" else "")
             + "Keep working (and join any running meeting via `wait`)."
         )
     checked = (f" Hidden-instance check passed: {holdout['candidate']:g} vs baseline {holdout['baseline']:g}."
                if holdout else "")
-    return _with_notice(f"Emergency meeting {f['id']} called.{checked} Now call `wait` and follow the discussion.")
+    return _with_notice(f"Emergency meeting {f['id']} called.{checked}{note} Now call `wait` and follow the discussion.")
 
 
 def _fmt_run(e: dict) -> str:
