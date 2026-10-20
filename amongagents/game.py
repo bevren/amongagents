@@ -105,6 +105,13 @@ COUNCIL (only in rooms with several crews): when your crew's vote picks a new
    pick gets an explorer in every crew it covers and goes up to the next
    council; the top council's picks are
    ROOM-WIDE DECISIONS. Afterwards, go back to your crew's work.
+LONG BETS: some ideas need a long search before they pay off (a slow solver, a
+   big rewrite), and a crew that re-splits every meeting never gives them the
+   time. In a crew of 3+ agents, ONE agent at a time may vote with
+   `long_bet=true` (and `work_on=` the idea): for a while (30 minutes by
+   default) no crew vote or council moves them off it, and it's theirs alone. Later meetings still hear
+   from them as usual. Use it for a real long shot you can argue for, not to
+   dodge a split; end it early with `long_bet=false`.
 LINEAGES (rooms with several crews): your crew builds on ITS OWN best code,
    not the room's. An improvement only has to beat your crew's best, and only
    your crew syncs to it. Other crews' results reach you as notes and council
@@ -1311,7 +1318,15 @@ class Room:
                    for d in g.directions if d["id"] not in new]
         return m.ideas + carried
 
-    async def vote(self, name: str, idea: str, reason: str = "", work_on: str | None = None) -> None:
+    def _long_bets(self, crew: Group) -> dict[str, dict]:
+        """Active long bets in a crew, by holder: the direction a holder keeps until it expires."""
+        now = time.time()
+        return {lb["by"]: d for d in crew.directions
+                if (lb := d.get("long_bet")) and lb["until"] > now and lb["by"] in d["agents"]
+                and lb["by"] in self.players and self.players[lb["by"]].connected}
+
+    async def vote(self, name: str, idea: str, reason: str = "", work_on: str | None = None,
+                   long_bet: bool | None = None) -> None:
         self._player(name)
         g, m = self._meeting_of(name)
         if g is None:
@@ -1339,7 +1354,24 @@ class Room:
             work_on = None  # councils pick for the crews they cover; the delegates go back to theirs
         elif work_on and not any(i["id"] == work_on for i in options):
             raise GameError(f"unknown idea {work_on!r} for work_on; options: {listed}")
+        if long_bet and not g.level:
+            s, bets = self.task.meeting, self._long_bets(g)
+            others = [n for n in bets if n != name]
+            if not work_on:
+                raise GameError("a long bet needs work_on: the idea you'll keep exploring")
+            if name in bets and bets[name]["id"] != work_on:
+                raise GameError(f"you already hold a long bet on {bets[name]['id']}; vote long_bet=false to end it "
+                                "first")
+            if name not in bets:
+                if len(self._online(g)) < 3:
+                    raise GameError("long bets need a crew of 3+ online agents, so the others can still split up")
+                if len(others) >= s.long_bets_per_crew:
+                    raise GameError(f"your crew's long-bet slots are taken ({', '.join(others)})")
+        elif long_bet:
+            raise GameError("long bets are claimed in crew meetings, not councils")
         m.votes[name] = {"idea": idea, "work_on": work_on, "reason": reason[:500]}
+        if long_bet is not None and not g.level:
+            m.votes[name]["long_bet"] = bool(long_bet)
         await self._emit("voted", to=m.participants, meeting_id=m.id, group=g.id, player=name)
         self._check_votes_done(g)
 
@@ -1369,8 +1401,25 @@ class Room:
 
     async def _conclude(self, crew: Group, m: Meeting) -> None:
         agents = [n for n in m.participants if self.players[n].connected]
-        directions, assignments = assign(self._options(crew, m), {n: v["idea"] for n, v in m.votes.items()},
-                                         agents, {n: v.get("work_on") for n, v in m.votes.items()})
+        options, votes = self._options(crew, m), {n: v["idea"] for n, v in m.votes.items()}
+        # Long bets: their holders sit out the split and keep their direction (it's theirs alone)
+        bets = {n: {**d} for n, d in self._long_bets(crew).items()}
+        for n, v in m.votes.items():
+            if v.get("long_bet") is False:
+                bets.pop(n, None)
+            elif v.get("long_bet") and n not in bets:
+                idea = next(i for i in options if i["id"] == v["work_on"])
+                bets[n] = {**idea, "long_bet": {"by": n, "until": time.time() + self.task.meeting.long_bet_sec}}
+        bet_ideas = {d["id"] for d in bets.values()}
+        directions, assignments = assign([i for i in options if i["id"] not in bet_ideas], votes,
+                                         [n for n in agents if n not in bets],
+                                         {n: v.get("work_on") for n, v in m.votes.items() if n not in bets})
+        if directions:
+            tally = Counter(votes.values())
+            for n, d in bets.items():
+                directions.append({**{k: v for k, v in d.items() if k != "carried"},
+                                   "votes": tally[d["id"]], "agents": [n]})
+                assignments[n] = d["id"]
         changed = bool(directions)
         if changed:  # the vote replaces the crew's plan (copied: latecomers get added to it later)
             crew.directions = [{**d, "agents": list(d["agents"])} for d in directions]
@@ -1481,8 +1530,10 @@ class Room:
         for c in crews:
             if any(d["id"] == idea["id"] for d in c.directions):
                 continue
-            online = self._online(c)
-            slot = next((d for d in c.directions if d.get("adopted")), None)
+            bets = self._long_bets(c)  # a council never moves a long bet's holder or drops the bet
+            online = [a for a in self._online(c) if a not in bets]
+            protected = [id(d) for d in bets.values()]
+            slot = next((d for d in c.directions if d.get("adopted") and id(d) not in protected), None)
             if slot and slot.get("adopted_level", 0) > source.level:
                 continue  # a lower council doesn't overrule a higher one
             agents = [a for a in slot["agents"] if a in online] if slot else []
@@ -1496,8 +1547,8 @@ class Room:
                     elif len(online) >= 2:
                         # everyone leads their own direction (small crews): the pick replaces the
                         # crew's lowest-ranked one, so a council decision is never a no-op
-                        weakest = next((d for d in reversed(c.directions) if d is not slot and staffed[d["id"]]),
-                                       None)
+                        weakest = next((d for d in reversed(c.directions) if d is not slot and staffed[d["id"]]
+                                        and id(d) not in protected), None)
                         if weakest is None:
                             continue
                         c.directions.remove(weakest)

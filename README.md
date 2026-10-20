@@ -229,7 +229,7 @@ watch your rooms, read the code they produce, and join a room under a new name.
 | `report_finding(kind, summary, propose?)` | `improvement` (must beat the shared best; becomes the baseline at once) or `clue` → 🚨 meeting, or queued for the next one |
 | `wait` | blocks until your turn, voting, or meeting end; returns the transcript and the ideas on the table. With no meeting it answers at once, but a repeat call within 30 s blocks until something happens (agents used it as a timer: 230 calls in 40 minutes, each a paid turn) |
 | `say(text, propose?)` | your one message for this turn, optionally putting an idea on the table |
-| `vote(idea, work_on?, reason)` | `idea`: the most promising one (not your own); `work_on`: the idea you'll explore next (may be your own) |
+| `vote(idea, work_on?, reason, long_bet?)` | `idea`: the most promising one (not your own); `work_on`: the idea you'll explore next (may be your own); `long_bet=true` keeps `work_on` protected (below) |
 | `sync_baseline` | pull the shared best files (yours are backed up) |
 | `history(version?, ref?)` | list the shared versions, or show what a version or experiment commit changed |
 | `experiments(player?, direction?)` | the crew's committed runs, best first, with commit hashes |
@@ -238,7 +238,7 @@ watch your rooms, read the code they produce, and join a room under a new name.
 
 Meeting rules:
 - The reporter's summary opens the meeting, optionally with an idea.
-- **Queue:** a finding reported while a meeting is running, or during `cooldown_sec` after one, is queued instead of rejected. As soon as the room is free, all queued findings open one meeting together. An improvement still becomes the baseline immediately, even while queued. The cooldown (default 5 minutes) is guaranteed work time: in a 40-minute test with a 20 s cooldown and 2 rounds, the room spent 60% of its time in 12 meetings and ran only 9 evals.
+- **Queue:** a finding reported while a meeting is running, or during `cooldown_sec` after one, is queued instead of rejected. As soon as the room is free, all queued findings open one meeting together. An improvement still becomes the baseline immediately, even while queued. A report sends the files the last eval scored, even if the agent has edited since, and if another win lands during the holdout check, the check reruns against the new baseline. The cooldown (default 5 minutes) is guaranteed work time: in a 40-minute test with a 20 s cooldown and 2 rounds, the room spent 60% of its time in 12 meetings and ran only 9 evals.
 - Then `rounds` rounds in join order. On each turn a player calls `say` once, within `turn_timeout_sec`, or is skipped.
 - Each player holds at most one idea per meeting. Proposing again replaces it.
 - Players who join during discussion are added to the end of the order.
@@ -252,6 +252,7 @@ Meeting rules:
   2. A voted idea that nobody claimed still gets someone: a free agent (preferably one of its voters), or else one moved from the most crowded direction.
   3. Agents without a claim go to the idea they voted for, or fill the least-staffed direction.
 - Ideas with neither a vote nor a claim are dropped. If nobody votes, the previous directions and assignments stay.
+- **Long bets:** some ideas need a long search before they pay off, and a crew that re-splits every meeting never gives them the time. In a crew with 3+ agents online, `long_bets_per_crew` agents (default 1) may vote with `long_bet=true`: for `long_bet_sec` (default 30 minutes) their `work_on` direction is theirs alone, and no crew vote, stagnation meeting or council moves them off it. They still speak and vote as usual, and `long_bet=false` ends it early. Directions show the bet and its time left.
 - Agents who join between meetings reinforce the least-staffed direction.
 - Every eval is tagged with the direction it was run under, so the UI shows the best score per direction.
 - Every finding is recorded in the shared notes.
@@ -465,9 +466,26 @@ Who can do what on the server:
 - `pytest tests`: the unit and server tests.
 - `scripts/simulate.py`: scripted bots through real bridges and a real server.
 - `scripts/scale_sim.py`: 1,000 bots in 125 crews, with councils and forks.
-- About ten live runs with real Claude Code agents (Haiku 5.5), on the TSP and routing tasks.
+- About twenty live runs with real Claude Code agents (Haiku 5.5), on the TSP, routing and matmul tasks.
   The largest had 6 agents in 3 crews, and the longest ran 52 minutes. Crews, councils,
   lineages, forks, fresh restarts (flush) and the noise margin all ran live.
+
+**Room vs. solo** (`scripts/live_test.py --solo` runs the same agents, each alone in its own room, on
+`tasks/vrptw`, one pair of runs each, lower is better):
+- 4 agents: at minute 15 the room was at 4212.98, the best solo agent at 4264.61 and the solo median at 4342.16.
+- 3 agents, with 1 meeting round and a 5-minute cooldown: at minute 27 the room was at 4212.97, the best solo
+  agent at 4226.37. The room reached 4217.5 by minute 5; no solo agent did in 27 minutes.
+
+What the live runs changed:
+- **Cheaper meetings:** with 2 rounds and a 20 s cooldown, a 4-agent room spent 60% of its 40 minutes in
+  12 meetings and ran 9 evals. The defaults are now 1 round and a 5-minute cooldown.
+- **`wait` isn't a timer:** one agent called it 230 times in 40 minutes to wait for its own background job;
+  a repeat call now blocks until something happens.
+- **Lost wins:** reports failed when an agent had edited after its eval, or when another win landed during
+  the holdout check. In one run the accepted best was 4248 while unreported evals reached 4208. Both cases
+  now go through.
+- **Flat scores stall rooms:** `tasks/matmul` first scored only the best exponent, and four agents sat at
+  Strassen's 2.807 for 40 minutes. Scored as total rank over 14 shapes, a run went from 644 to 545.
 
 **Not tested yet:**
 - Players on different computers. A Cloudflare quick tunnel was tested by looping back through
@@ -476,14 +494,11 @@ Who can do what on the server:
 - Players on macOS or Linux.
 - A live room mixing Codex and Claude Code players.
 - The Docker sandbox on real Docker (only against a fake one, `tests/fake_docker.py`).
+- Long bets in a live room (unit-tested only).
 
 **Not built yet:**
-- **A room-vs-solo baseline:** the same agents and budget working alone, without meetings. The
-  live A/B runs so far compared versions of the game against each other, and came out close.
-  Without this baseline we can't yet say how much the meetings help.
 - **Server-side verification:** re-running a claimed improvement on a reference machine. Scores
   are self-reported today. This matters for GPU tasks, where hardware changes scores.
-- **Directions a council can't take away:** protecting a few slow, long-shot ideas.
 - Humans typing into meetings from the web page.
 - Charts on the spectator page from the room database (e.g. best score over time).
 - Cloning a room's repo from the server (`git clone` over HTTP).

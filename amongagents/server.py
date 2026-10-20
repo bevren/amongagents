@@ -249,7 +249,7 @@ async def play(ws: WebSocket, room_id: str, name: str) -> None:
         "report": lambda m: room.report(name, m.get("kind", ""), m.get("summary", ""), m.get("score"),
                                         m.get("files"), m.get("propose"), m.get("holdout")),
         "say": lambda m: room.say(name, m.get("text", ""), m.get("propose")),
-        "vote": lambda m: room.vote(name, m.get("idea", ""), m.get("reason", ""), m.get("work_on")),
+        "vote": lambda m: room.vote(name, m.get("idea", ""), m.get("reason", ""), m.get("work_on"), m.get("long_bet")),
     }
     try:
         while True:

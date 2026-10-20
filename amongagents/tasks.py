@@ -43,6 +43,10 @@ class MeetingSettings:
     fork_every_sec: float = 900
     # an improvement must beat the best by max(min_delta, noise_k x the measured run-to-run noise)
     noise_k: float = 2.0
+    # a long bet: one agent per crew (of 3+ online) keeps a slow, long-shot direction this long,
+    # whatever later crew votes and councils pick
+    long_bet_sec: float = 1800
+    long_bets_per_crew: int = 1
 
 
 @dataclass

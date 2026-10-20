@@ -63,9 +63,15 @@ def _fmt_plan(directions: list[dict], me: str) -> str:
     return "\n".join(
         f"  {'👉 ' if me in d['agents'] else '   '}{d['id']}: {d['text']}  "
         f"[proposed by {d['by']}, {d['votes']} vote{'s' if d['votes'] != 1 else ''}; "
-        f"explorers: {', '.join(d['agents'])}]"
+        f"explorers: {', '.join(d['agents'])}]" + _fmt_bet(d)
         for d in directions
     )
+
+
+def _fmt_bet(d: dict) -> str:
+    lb = d.get("long_bet")
+    left = (lb["until"] - time.time()) / 60 if lb else 0
+    return f"  🎯 LONG BET of {lb['by']}, protected for {left:.0f} more min" if left > 0 else ""
 
 
 def _fmt_decisions(decisions: list[dict]) -> str:
@@ -871,7 +877,8 @@ async def wait(timeout_sec: float = 45) -> str:
                 + (f", or work_on=\"{mine['id']}\" to keep your current direction" if mine and carried else "")
                 + (" (stagnation meeting: only the new ideas below count)" if m["finding"]["kind"] == "stagnation" else "")
                 + ". Ideas with a vote or a claim become parallel directions; a voted idea nobody claimed"
-                " still gets someone."
+                " still gets someone. A real long shot that needs time? Add long_bet=true to keep work_on"
+                " protected from re-splits (one agent per crew of 3+)."
                 + f"\n\nNEW IDEAS:\n{_fmt_ideas(m['ideas'])}"
                 + (f"\n\nCURRENT DIRECTIONS (can also be voted for or kept with work_on):\n{_fmt_ideas(carried)}"
                    if carried else "")
@@ -944,13 +951,15 @@ async def say(text: str, propose: str | None = None) -> str:
 
 
 @mcp.tool()
-async def vote(idea: str, work_on: str | None = None, reason: str = "") -> str:
+async def vote(idea: str, work_on: str | None = None, reason: str = "", long_bet: bool | None = None) -> str:
     """Final vote of a meeting.
     idea: the most promising idea by id (e.g. 'I2'); not your own (or, in a council, your crew's
     nominee) unless it's the only option.
     work_on: the idea YOU will explore next (may be your own), e.g. the split agreed in the discussion.
-    Ideas with a vote or a claim become directions explored in parallel. Councils ignore work_on."""
-    await S.request("vote", idea=idea, work_on=work_on or None, reason=reason)
+    Ideas with a vote or a claim become directions explored in parallel. Councils ignore work_on.
+    long_bet: true to keep work_on as your LONG BET (crews of 3+, one per crew): for 30 minutes no
+    crew vote or council moves you off it. false ends yours early."""
+    await S.request("vote", idea=idea, work_on=work_on or None, reason=reason, long_bet=long_bet)
     S.voted = True
     return _with_notice("Vote cast. Call `wait` to see the result.")
 
