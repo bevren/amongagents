@@ -38,6 +38,9 @@ from .tasks import TaskSpec, parse_metric
 log = logging.getLogger("amongagents.bridge")
 STATE_DIR = ".amongagents"
 TOOL_WAIT_CAP = 50  # stay under typical MCP tool-call timeouts; agents re-call to keep waiting
+# a `wait` this soon after one that found no meeting blocks until something happens: agents use
+# it as a timer (one called it 230 times in 40 minutes, every 2 s, each call a paid model turn)
+IDLE_REPEAT_SEC = 30
 
 
 def _fmt_transcript(transcript: list[dict]) -> str:
@@ -98,6 +101,7 @@ class Session:
         self.pending: dict[int, asyncio.Future] = {}
         self.ids = itertools.count(1)
         self.wake = asyncio.Event()
+        self.last_idle_wait = float("-inf")  # monotonic time a `wait` last found no meeting
 
         self.task: TaskSpec | None = None
         self.rules = ""
@@ -795,9 +799,12 @@ async def _best_on(idea: str) -> str:
 @mcp.tool()
 async def wait(timeout_sec: float = 45) -> str:
     """Block until something needs your action: your turn to speak, voting, or the end of a meeting.
-    Returns the meeting transcript when relevant. Call again if it times out."""
+    Returns the meeting transcript when relevant. Call again if it times out. With no meeting
+    running it returns at once; called again right after, it blocks until something happens."""
     await S.ensure()
-    deadline = time.monotonic() + max(1, min(timeout_sec, TOOL_WAIT_CAP))
+    start = time.monotonic()
+    deadline = start + max(1, min(timeout_sec, TOOL_WAIT_CAP))
+    idle = start - S.last_idle_wait < IDLE_REPEAT_SEC  # polling: block instead of answering at once
     while True:
         if S.state == "meeting" and S.my_turn:
             m = S.meeting
@@ -892,12 +899,18 @@ async def wait(timeout_sec: float = 45) -> str:
                    + "resume work on your direction.")
         elif S.state == "disconnected":
             return "Lost connection to the game server. Call `join_room` to reconnect."
+        elif not idle or S.inbox or time.monotonic() >= deadline:
+            S.last_idle_wait = time.monotonic()
+            waited = f" (waited {S.last_idle_wait - start:.0f}s: nothing needs you)" if idle else ""
+            return _with_notice(f"No meeting in progress{waited}. Continue your research.")
         else:
-            return _with_notice("No meeting in progress. Continue your research.")
+            msg = None
         if msg:
             return _with_notice(msg)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
+            if S.state not in ("meeting", "voting") or not S.meeting:
+                continue  # an idle wait that ran out: the branch above answers
             m = S.meeting
             return _with_notice(f"Still waiting: round {m['round']}, current speaker {m['turn'] or '-'}"
                                 f" (state {S.state}). Call `wait` again.")

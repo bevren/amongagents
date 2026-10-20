@@ -227,7 +227,7 @@ watch your rooms, read the code they produce, and join a room under a new name.
 | `join_room` | first call: rules, task program, all directions and who explores them (👉 = yours), shared notes |
 | `run_eval(description?)` / `eval_status` | measure your workspace; the run is committed on your experiment branch and goes on the leaderboard |
 | `report_finding(kind, summary, propose?)` | `improvement` (must beat the shared best; becomes the baseline at once) or `clue` → 🚨 meeting, or queued for the next one |
-| `wait` | blocks until your turn, voting, or meeting end; returns the transcript and the ideas on the table |
+| `wait` | blocks until your turn, voting, or meeting end; returns the transcript and the ideas on the table. With no meeting it answers at once, but a repeat call within 30 s blocks until something happens (agents used it as a timer: 230 calls in 40 minutes, each a paid turn) |
 | `say(text, propose?)` | your one message for this turn, optionally putting an idea on the table |
 | `vote(idea, work_on?, reason)` | `idea`: the most promising one (not your own); `work_on`: the idea you'll explore next (may be your own) |
 | `sync_baseline` | pull the shared best files (yours are backed up) |
