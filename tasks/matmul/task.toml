@@ -1,12 +1,12 @@
 name = "matmul-exponent"
-description = "Find bilinear algorithms for small matrix multiplications. A rank-r algorithm for n x m times m x p proves omega <= 3 ln r / ln(nmp); lower is better. Exact checks, deterministic scores, runs on any laptop."
+description = "Find bilinear algorithms with few multiplications for a ladder of small matrix shapes (2x2x2 up to 5x5x5). Score = total multiplications; each algorithm also proves a bound on the exponent omega. Exact checks, deterministic scores, runs on any laptop."
 
 [metric]
-name = "omega_bound"
+name = "total_rank"
 direction = "minimize"
 regex = 'score:\s*([-+0-9.eE]+)'
-min_delta = 0.0001   # scores are exact: one multiplication fewer always counts
-baseline = 3.0       # the schoolbook 2 x 2 algorithm, 8 multiplications
+min_delta = 0.5      # scores are exact integers: one multiplication fewer always counts
+baseline = 644       # schoolbook on every shape of the ladder
 
 [eval]
 command = "python eval.py"

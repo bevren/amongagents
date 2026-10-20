@@ -1,12 +1,16 @@
-"""Protected evaluator: prints `score: <exponent>` on success.
+"""Protected evaluator: prints `score: <total rank>` on success.
 
-decomposition.py describes a bilinear algorithm for multiplying an n x m matrix A by an m x p
+decomposition.py describes bilinear algorithms. One multiplies an n x m matrix A by an m x p
 matrix B with r multiplications:
 
     M_t    = (sum_ij U[t][i][j] * A[i][j]) * (sum_jk V[t][j][k] * B[j][k])     t = 0 .. r-1
     C[i][k] = sum_t W[t][i][k] * M_t
 
-Such an algorithm (rank r for the shape <n,m,p>) proves omega <= 3 ln r / ln(n m p), the score.
+Such an algorithm (rank r for the shape <n,m,p>) proves omega <= 3 ln r / ln(n m p).
+
+The score is the total rank over a fixed LADDER of shapes: each shape counts with the lowest
+rank submitted for it (or any permutation of it: the rank is the same), and a shape with no
+algorithm counts as the schoolbook n m p. One multiplication saved anywhere is one point.
 
 Correctness is checked exactly as a polynomial identity: the sum of the r rank-one tensors
 must equal the matrix multiplication tensor. The check runs modulo several primes the eval
@@ -24,6 +28,8 @@ from fractions import Fraction
 
 import numpy as np
 
+LADDER = [(2, 2, 2), (2, 2, 3), (2, 3, 3), (2, 2, 4), (2, 3, 4), (3, 3, 3), (2, 4, 4),
+          (3, 3, 4), (3, 4, 4), (4, 4, 4), (3, 3, 6), (4, 4, 5), (4, 5, 5), (5, 5, 5)]
 MAX_VOLUME = 512          # n * m * p, so a check stays fast
 MAX_COEFF = 2 ** 20       # numerators and denominators of every coefficient
 PRIMES = 4                # random primes per check
@@ -122,32 +128,58 @@ def load():
     return d
 
 
+def verify(d):
+    """Check one algorithm; returns (shape, rank)."""
+    n, m, p_ = int(d["n"]), int(d["m"]), int(d["p"])
+    U, V, W = d["U"], d["V"], d["W"]
+    if min(n, m, p_) < 1 or n * m * p_ < 2:
+        raise Bad("need n, m, p >= 1 and n * m * p >= 2")
+    if n * m * p_ > MAX_VOLUME:
+        raise Bad(f"n * m * p = {n * m * p_} is over the cap of {MAX_VOLUME}")
+    r = len(U)
+    if not (len(V) == len(W) == r) or r < 1:
+        raise Bad("U, V and W need the same number r >= 1 of terms")
+    if r > n * m * p_:
+        raise Bad(f"rank {r} is above the schoolbook {n * m * p_}")
+    U = [flatten(U[t], n, m, "U", t) for t in range(r)]
+    V = [flatten(V[t], m, p_, "V", t) for t in range(r)]
+    W = [flatten(W[t], n, p_, "W", t) for t in range(r)]
+    check(n, m, p_, U, V, W)
+    return (n, m, p_), r
+
+
 def main():
     t0 = time.time()
+    best = {shape: math.prod(shape) for shape in LADDER}
+    found = {}
     try:
-        d = load()
-        n, m, p_ = int(d["n"]), int(d["m"]), int(d["p"])
-        U, V, W = d["U"], d["V"], d["W"]
-        if min(n, m, p_) < 1 or n * m * p_ < 2:
-            raise Bad("need n, m, p >= 1 and n * m * p >= 2")
-        if n * m * p_ > MAX_VOLUME:
-            raise Bad(f"n * m * p = {n * m * p_} is over the cap of {MAX_VOLUME}")
-        r = len(U)
-        if not (len(V) == len(W) == r) or r < 1:
-            raise Bad("U, V and W need the same number r >= 1 of terms")
-        if r > n * m * p_:
-            raise Bad(f"rank {r} is above the trivial {n * m * p_}")
-        U = [flatten(U[t], n, m, "U", t) for t in range(r)]
-        V = [flatten(V[t], m, p_, "V", t) for t in range(r)]
-        W = [flatten(W[t], n, p_, "W", t) for t in range(r)]
-        check(n, m, p_, U, V, W)
+        algos = load()
+        if isinstance(algos, dict):
+            algos = [algos]
+        for k, d in enumerate(algos):
+            try:
+                shape, r = verify(d)
+            except Bad as e:
+                raise Bad(f"algorithm #{k}: {e}")
+            slot = tuple(sorted(shape))
+            if slot not in best:
+                print(f"note: algorithm #{k} is <{shape[0]},{shape[1]},{shape[2]}>, not a ladder shape "
+                      "(it still counts for the omega bound below)")
+            elif r < best[slot]:
+                best[slot] = r
+            if r < found.get(shape, (math.inf,))[0]:
+                found[shape] = (r,)
     except Bad as e:
         print(f"invalid: {e}")
         sys.exit(1)
-    exponent = 3 * math.log(r) / math.log(n * m * p_)
-    print(f"shape <{n},{m},{p_}>, rank {r} (naive {n * m * p_}), checked modulo {PRIMES} random primes "
+    for shape in LADDER:
+        tag = "" if best[shape] < math.prod(shape) else "  (schoolbook)"
+        print(f"  <{shape[0]},{shape[1]},{shape[2]}>  rank {best[shape]:4d}{tag}")
+    omega = min([3 * math.log(r) / math.log(math.prod(sh)) for sh, (r,) in found.items()] + [3.0])
+    print(f"total rank {sum(best.values())} (schoolbook {sum(math.prod(sh) for sh in LADDER)}), "
+          f"best omega bound {omega:.6f}, {len(found)} shape(s) checked modulo {PRIMES} random primes "
           f"in {time.time() - t0:.1f}s")
-    print(f"score: {exponent:.6f}")
+    print(f"score: {sum(best.values())}")
 
 
 if __name__ == "__main__":
